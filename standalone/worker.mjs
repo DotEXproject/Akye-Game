@@ -12,7 +12,7 @@ export default {
     }
     const assetUrl = new URL(request.url);
     if(url.pathname.startsWith('/akye/'))
-      assetUrl.pathname = url.pathname === '/akye/' ? '/game/index.html' : '/game/' + url.pathname.slice('/akye/'.length);
+      assetUrl.pathname = url.pathname === '/akye/' ? '/game/' : '/game/' + url.pathname.slice('/akye/'.length);
     const response = await env.ASSETS.fetch(new Request(assetUrl, request));
     const headers = new Headers(response.headers);
     const location = headers.get('Location');
