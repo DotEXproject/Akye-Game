@@ -1,0 +1,18 @@
+Gye Nyame: kasahorow / Openclipart via Wikimedia Commons; CC0. https://commons.wikimedia.org/wiki/File:Gye_Nyame_(Adinkra_Symbol).svg
+Nyansapo: GeorgesMbakop via Wikimedia Commons; CC0. https://commons.wikimedia.org/wiki/File:Nyansapo.svg
+Cowrie and Black Star token illustrations: original vector artwork for this game.
+
+Nkyinkyim vector: Pablo Busatto, Wikimedia Commons File:Nkyinkyim_(Adinkra_card).svg; CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/ . Modified: isolated symbol, recoloured. This adapted SVG is distributed under CC BY-SA 4.0.
+Dwennimmen vector: GeorgesMbakop, Wikimedia Commons File:Dwennimmen_(1).svg; CC0. Modified: recoloured.
+Ananse Ntontan: original vector rendition of the traditional eight-spoke symbol, informed by the Bosomba Amosah / Pablo Busatto reference on Wikimedia Commons File:Ananse_ntontan.png.
+Symbol meanings consulted: adinkrasymbols.org/symbols/nkyinkyim/, /ananse-ntentan/, /dwennimmen/.
+
+Photorealistic board and cowrie/gold sprites: generated for Akye from the approved Impressed Walnut concept. Board artwork incorporates adapted Adinkra references noted above and is shared under CC BY-SA 4.0. The interactive tokens are separate assets. Socket overlay calibration is stored as BOARD_POINTS in experience.js.
+
+Original Akye engraved-line symbol studies: akye-nyansapo.svg, akye-nkyinkyim.svg, akye-ananse-ntontan.svg and akye-dwennimmen.svg. Independently drawn geometric interpretations of traditional Adinkra forms; no source SVG paths reused. These studies are presented separately for review. Existing selected board artwork retains its own earlier provenance.
+
+Current Akye artwork: all five original akye-*.svg symbols are independently drawn geometric interpretations of traditional Adinkra forms. The current board carvings and Gye Nyame coin were rendered from these original vectors. Earlier artwork and references are retained in this source record for provenance. Cowrie sprite is an original generated natural-shell illustration.
+
+Credit: Original Akye Adinkra vector illustrations and custom visual design — DotEX Solutions. Traditional Adinkra forms remain acknowledged as Akan cultural heritage; this credit identifies the custom illustrations.
+
+Approved audio update (13 October 2026): original Kete-inspired and Atumpan-inspired synthesis from the reviewed sound trial. jubilation-hurray.mp3 supplied by the user as seed-audio-1.0_Add_a_shout_of_joy_Hurray_let_the_shout_come_out_clearly_on_the_attached_clappin-0.mp3; encoded at 96 kbps with a 1.2-second final fade. Earlier Freesound preview cheer/clap recordings are not used by this release.

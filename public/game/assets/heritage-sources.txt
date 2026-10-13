@@ -1,0 +1,18 @@
+AKYE / GHANA AGORƆDIE
+
+Original Adinkra illustrations and custom visual design by DotEX Solutions.
+
+Nyansapo, Nkyinkyim, Ananse Ntontan, Dwennimmen and Gye Nyame are original geometric illustrations created for Akye from traditional Adinkra forms. The game uses these illustrations in its symbol gallery, history, board carvings and gold coin.
+
+Adinkra symbols are acknowledged as Akan cultural heritage. DotEX Solutions is credited for these particular illustrations, not ownership of the traditional symbols.
+
+Earlier development assets and their source/licence records are documented separately in docs/artwork-development-provenance.txt. This credit does not relicense those earlier assets.
+
+Atumpan and Kete history additions (approved 13 October 2026):
+GES / NaCCA, Creative Arts Basic 4–6 (2019), pages 138–139: ensemble membership and instrument classification.
+https://nacca.gov.gh/wp-content/uploads/2019/06/CREATIVE-ARTS-B4-B6-.pdf
+Chiefly communication: Beyond ‘musicking’: the linguistic significance of the Atumpan of the Akan of Ghana.
+https://www.tandfonline.com/doi/full/10.1080/14797585.2025.2454627
+Kete ceremonial context: Grinnell College Musical Instrument Collection.
+https://omeka-s.grinnell.edu/s/MusicalInstruments/page/kete
+The importance statements are cultural context; they are not direct curriculum quotations. Listen buttons use the game's synthesised illustrations, not recordings of traditional performers.
