@@ -1,0 +1,70 @@
+import {Miniflare} from 'miniflare';
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {handle} from '../server/api.mjs';
+import {initial,play,legal} from '../server/rules.mjs';
+const realNow=Date.now,testNow=realNow();Date.now=()=>testNow;
+const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',compatibilityDate:'2026-05-01',d1Databases:['DB']});
+try{
+  const db=await mf.getD1Database('DB');
+  for(const sql of (await readFile(new URL('../drizzle/0000_perpetual_blink.sql',import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
+  const clients=Array.from({length:9},(_,i)=>({cookie:'',ip:'192.0.2.'+i}));
+  async function call(w,path,body,origin='https://test.example'){
+    const c=clients[w],r=await handle(new Request('https://test.example/api/achi/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'CF-Connecting-IP':c.ip,...(c.cookie?{cookie:c.cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}),db);
+    if(r.headers.has('set-cookie'))c.cookie=r.headers.get('set-cookie').split(';')[0];
+    return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')};
+  }
+  assert.equal((await call(0,'account')).data.account,null);
+  await call(0,'profile',{name:'Ama'});const guestCookie=clients[0].cookie;
+  const guestId=(await db.prepare("SELECT id FROM players WHERE name='Ama'").first()).id;
+  const handles=['ama_obeng','kofi_obeng','abena_obeng','akosua_obeng'];const keys=[];
+  for(let i=0;i<4;i++){const r=await call(i,'account/register',{handle:handles[i],name:i===0?'Ama':'Player '+i});assert.equal(r.status,201,JSON.stringify(r));assert.match(r.data.signInCode,/^[a-f0-9]{64}$/);assert.match(r.cookie,/HttpOnly; SameSite=Strict/);keys.push(r.data.signInCode);}
+  assert.equal((await db.prepare('SELECT player_id FROM akye_accounts WHERE handle=?').bind(handles[0]).first()).player_id,guestId);
+  assert.equal((await call(4,'account/register',{handle:'AMA_OBENG'})).status,409);
+  assert.equal((await call(4,'account/register',{handle:'<img onerror=x>'})).status,400);
+  clients[4].cookie=guestCookie;assert.equal((await call(4,'profile')).status,401);
+  assert.equal((await call(4,'account/login',{handle:handles[0],signInCode:'0'.repeat(64)})).status,401);
+  assert.equal((await call(4,'account/login',{handle:handles[0],signInCode:keys[0]})).status,200);
+  assert.equal((await call(4,'profile')).data.name,'Ama');
+  assert.equal((await call(4,'account/logout',{})).status,200);assert.equal((await call(4,'friends/pulse',{})).status,401);
+  assert.equal((await call(0,'friends/action',{handle:handles[1],action:'request'},'https://evil.example')).status,403);
+  assert.equal((await call(0,'friends/action',{handle:handles[0],action:'request'})).status,404);
+  assert.equal((await call(0,'challenges',{handle:handles[1]})).status,403);
+  let search=await call(0,'friends/search?q=kofi');assert.equal(search.data.players[0].handle,handles[1]);assert.equal(Object.keys(search.data.players[0]).includes('status'),false);
+  await call(0,'friends/action',{handle:handles[1],action:'request'});
+  assert.equal((await call(0,'friends/action',{handle:handles[1],action:'accept'})).status,409);
+  assert.equal((await call(1,'friends/pulse',{})).data.friends[0].relationship,'received');
+  assert.equal((await call(1,'friends/action',{handle:handles[0],action:'accept'})).status,200);
+  await call(0,'friends/pulse',{});let pulse=await call(1,'friends/pulse',{});assert.equal(pulse.data.friends[0].status,'Online');
+  await call(1,'account/settings',{visible:false,discoverable:false});
+  assert.equal((await call(0,'friends/pulse',{})).data.friends[0].status,'Offline');assert.equal((await call(0,'friends/search?q=kofi')).data.players.length,0);
+  assert.equal((await call(0,'challenges',{handle:handles[1]})).status,409);
+  await call(1,'account/settings',{visible:true,discoverable:true});
+  const challenge=(await call(0,'challenges',{handle:handles[1],count:3,centre:true,tokens:['star','gye']})).data.challenge;
+  assert.match(challenge,/^[a-f0-9]{32}$/);assert.equal((await call(0,'challenges',{handle:handles[1]})).status,409);
+  assert.equal((await call(2,'challenges/'+challenge+'/accept',{})).status,404);assert.equal((await call(0,'challenges/'+challenge+'/accept',{})).status,403);
+  const accepts=await Promise.all([call(1,'challenges/'+challenge+'/accept',{}),call(1,'challenges/'+challenge+'/accept',{})]);assert.equal(accepts[0].status,200);assert.equal(accepts[1].status,200);assert.equal(accepts[0].data.room,accepts[1].data.room);
+  const room=accepts[0].data.room,snapshot=(await call(0,'rooms/'+room)).data;assert.equal(snapshot.state.status,'playing');assert.equal(snapshot.state.count,3);assert.equal(snapshot.state.centre,true);assert.deepEqual(snapshot.state.tokens,['star','gye']);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM rooms WHERE id=?').bind(room).first()).n,1);assert.equal((await call(2,'rooms/'+room)).status,403);assert.equal((await call(2,'rooms/'+room+'/join',{})).status,409);
+  assert.equal((await call(0,'friends/pulse',{})).data.friends[0].status,'In a game');
+  assert.equal((await call(0,'rooms/'+room+'/resign',{version:snapshot.version})).status,200);
+  assert.equal((await call(1,'leaderboard')).data.players[0].wins,1);
+  assert.equal((await call(0,'friends/action',{handle:handles[1],action:'block'})).status,200);assert.equal((await call(0,'friends/pulse',{})).data.friends.length,0);assert.equal((await call(1,'friends/search?q=ama')).data.players.length,0);
+  assert.equal((await call(1,'friends/action',{handle:handles[0],action:'request'})).status,404);assert.equal((await call(1,'challenges',{handle:handles[0]})).status,404);
+  await call(0,'friends/action',{handle:handles[1],action:'unblock'});assert.equal((await call(0,'friends/pulse',{})).data.friends.length,0);
+  await call(0,'friends/action',{handle:handles[1],action:'request'});await call(1,'friends/action',{handle:handles[0],action:'accept'});
+  await call(2,'friends/action',{handle:handles[1],action:'request'});await call(1,'friends/action',{handle:handles[2],action:'accept'});
+  await call(2,'friends/pulse',{});await db.prepare('DELETE FROM akye_limits').run();const a=(await call(0,'challenges',{handle:handles[1]})).data.challenge,b=(await call(2,'challenges',{handle:handles[1]})).data.challenge;
+  assert.match(a,/^[a-f0-9]{32}$/);assert.match(b,/^[a-f0-9]{32}$/);
+  const duel=await Promise.all([call(1,'challenges/'+a+'/accept',{}),call(1,'challenges/'+b+'/accept',{})]);assert.equal(duel.filter(x=>x.status===200).length,1);
+  assert.equal((await db.prepare("SELECT COUNT(*) n FROM rooms WHERE json_extract(state,'$.status')='playing'").first()).n,1);
+  clients[5].cookie=clients[0].cookie;const rotated=await call(0,'account/rotate',{});assert.equal(rotated.status,200);assert.equal((await call(5,'profile')).status,401);assert.equal((await call(5,'account/login',{handle:handles[0],signInCode:keys[0]})).status,401);assert.equal((await call(5,'account/login',{handle:handles[0],signInCode:rotated.data.signInCode})).status,200);
+  await db.prepare('UPDATE akye_presence SET last_seen=0').run();assert.equal((await call(2,'friends/pulse',{})).data.friends[0].status,'Offline');
+  await db.prepare('UPDATE akye_sessions SET expires=0').run();assert.equal((await call(0,'profile')).status,401);
+  for(let i=0;i<15;i++)await call(6,'account/login',{handle:'nobody_here',signInCode:'0'.repeat(64)});assert.equal((await call(6,'account/login',{handle:'nobody_here',signInCode:'0'.repeat(64)})).status,429);
+  // Boundary tests isolate the slide cap from repetition and placement wins.
+  const state=initial(3,true,['cowrie','gye']);Object.assign(state,{board:[1,2,1,2,0,2,1,0,0],placed:[0,3,3],turn:1,status:'playing',slides:38});
+  let s=play(state,[6,7]);assert.equal(s.slides,39);assert.equal(s.status,'playing');s=play(s,[5,8]);assert.equal(s.status,'finished');assert.equal(s.winner,0);assert.equal(s.reason,'40 slides without a winner');
+  let win=structuredClone(state);win.slides=39;win.board=[1,2,2,2,0,0,1,0,1];assert.ok(legal(win,1).some(m=>m[0]===6&&m[1]===4));win=play(win,[6,4]);assert.equal(win.winner,1);
+  console.log('Passed: guest-to-account continuity, cross-device sign-in, cookie rotation/expiry, private credentials, CSRF, discovery privacy, friend consent, presence, blocking, room isolation, atomic challenge acceptance, concurrent challenge exclusion, results and 40-slide boundary/win priority.');
+}finally{Date.now=realNow;await mf.dispose();}

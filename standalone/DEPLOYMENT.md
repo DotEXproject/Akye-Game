@@ -13,17 +13,20 @@ Option B: deploy independently in DotEX's own Cloudflare account using standalon
 5. Apply the schema: npx wrangler d1 migrations apply dotex-akye --remote --config standalone/wrangler.jsonc.
 6. Deploy: npx wrangler deploy --config standalone/wrangler.jsonc.
 7. Add games.dotexsolutions.com as a custom domain for this Worker in Cloudflare. Remove any existing hosting association for that hostname when switching providers; preserve all unrelated DNS records.
-8. Link to https://games.dotexsolutions.com from the corporate website.
+8. Link to https://games.dotexsolutions.com/akye/ from the corporate website.
 
-This standalone Worker serves /game/* and /api/achi/*; it does not use the Sites framework, connector code or authentication helpers. A directory-only upload to Cloudflare Pages will NOT provide multiplayer.
+This standalone Worker serves /akye/* and /api/achi/*, and redirects old /game/* links; it does not use the Sites framework, connector code or authentication helpers. A directory-only upload to Cloudflare Pages will NOT provide multiplayer.
 
 ## Installable browser app
 The game includes an app manifest, 192/512 pixel icons and a service worker. Supported browsers can offer installation/add-to-home-screen. The worker caches the local shell and assets after successful visits; online matches require a connection. Media and artwork not previously fetched may be unavailable offline. Profiles and API responses are never cached by it. New installations on another origin start new browser data; guest accounts and statistics do not automatically migrate from the previous hostname.
 
 ## Android release path
-Use this HTTPS web deployment as the shared game/API foundation. A later Trusted Web Activity can use the same browser-origin identity. Native WebView cookies and storage do not automatically share the browser's identity. Stable cross-device player accounts, recovery and deletion remain future work.
+Use this HTTPS web deployment as the shared game/API foundation. A later Trusted Web Activity can use the same browser-origin identity. Native WebView cookies and storage do not automatically share the browser's identity. Optional player accounts now support cross-device sign-in using a player ID and private code. Email recovery, account deletion and native credential integration remain future work.
 
 No APK, signed AAB, Play Billing implementation or Play Store submission is included. Before release choose a final package ID, create signing keys, associate the domain with the signed Android app through Digital Asset Links, test real devices and deep links, publish approved privacy/support information, complete Play Console disclosures/testing and build a signed AAB. Keep Android digital-purchase handling separate from web checkout and verify current Google Play rules before enabling payments.
 
 ## Release limitations and verification
 No live payments, advertising, paid subscriptions or purchases are enabled. Guest leaderboards are provisional and are not suitable for cash-prize ranked contests. Perform two-device/two-network multiplayer, mobile layout, offline/reconnect, home-screen installation and accessibility checks before a promoted public launch. Broad release also requires load tests, stronger anti-abuse limits and moderation. Automated checks do not replace browser/device testing or an independent security assessment.
+
+## Existing DotEX database upgrade
+The live base tables were created through the D1 console rather than Wrangler’s migration ledger. Do not run the original base migration against those existing tables. `server/social.mjs` creates account, session, friend, block, presence, challenge and rate-limit tables with `CREATE TABLE IF NOT EXISTS` on the first API request. Existing game records are retained. Future schema changes must use a deliberate versioned upgrade.

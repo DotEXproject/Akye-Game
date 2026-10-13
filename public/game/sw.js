@@ -1,5 +1,5 @@
-const CACHE = 'akye-shell-v7';
-const SHELL = ['./index.html','./game.js','./experience.js','./online.js','./play-layout.js','./platform.js','./soundscape.js','./arrival.js','./arrival.css','./assets/jubilation-hurray.mp3','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE = 'akye-shell-v8';
+const SHELL = ['./','./game.js','./experience.js','./online.js','./friends.js','./friends.css','./play-layout.js','./platform.js','./soundscape.js','./arrival.js','./arrival.css','./assets/jubilation-hurray.mp3','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
 });

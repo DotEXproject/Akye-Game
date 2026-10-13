@@ -10,7 +10,7 @@
     "dev": "wrangler dev --config standalone/wrangler.jsonc",
     "deploy": "wrangler deploy --config standalone/wrangler.jsonc",
     "db:migrate": "wrangler d1 migrations apply dotex-akye --remote --config standalone/wrangler.jsonc",
-    "test": "node scripts/check-game.cjs && node scripts/check-online.mjs && node scripts/check-online-ui.cjs && node scripts/check-setup-reserves.cjs && node scripts/check-play-layout.cjs"
+    "test": "node scripts/check-game.cjs && node scripts/check-online.mjs && node scripts/check-friends.mjs && node scripts/check-friends-ui.cjs && node scripts/check-online-ui.cjs && node scripts/check-setup-reserves.cjs && node scripts/check-play-layout.cjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",
