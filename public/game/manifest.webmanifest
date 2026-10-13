@@ -1,10 +1,10 @@
 {
-  "id": "/game/",
+  "id": "/akye/",
   "name": "Akye \u00b7 King George",
   "short_name": "Akye",
   "description": "A Ghanaian strategy game by DotEX Solutions",
-  "start_url": "/game/index.html",
-  "scope": "/game/",
+  "start_url": "/akye/",
+  "scope": "/akye/",
   "display": "standalone",
   "background_color": "#201b16",
   "theme_color": "#201b16",
