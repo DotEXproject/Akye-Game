@@ -3,5 +3,5 @@
   "main": "worker.mjs",
   "compatibility_date": "2026-05-01",
   "assets": {"directory": "../public", "binding": "ASSETS", "run_worker_first": true},
-  "d1_databases": [{"binding": "DB", "database_name": "dotex-akye", "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID", "migrations_dir": "../drizzle"}]
+  "d1_databases": [{"binding": "DB", "database_name": "dotex-akye", "database_id": "072d92c7-08a8-4807-b6c8-cb9c3044c3e1", "migrations_dir": "../drizzle"}]
 }
