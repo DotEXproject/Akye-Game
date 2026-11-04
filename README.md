@@ -38,3 +38,7 @@ Use **Friends / sign in** to create a unique player ID and a cryptographically r
 Search by a player-ID prefix of at least three characters, send a request and accept it once. Accepted friends see online status while the game is visible, updated about every 15 seconds, with status becoming offline after a minute without a heartbeat. Discovery and online status can be disabled independently. Blocks remove friendship and cancel pending challenges. Challenges expire after five minutes; accepting creates a private two-player room and the sender is notified within the next heartbeat. Background tabs pause heartbeats, and there are no push notifications outside the game.
 
 Games draw after three repetitions or 40 sliding moves in total. Placements are excluded, and a winning line on the 40th slide wins.
+
+## Security release checks
+
+Use `npm ci --ignore-scripts` for reproducible tooling and `npm run check:release` before publication. `npm run deploy` invokes the same gate automatically. The gate includes the gameplay/account/concurrency suites, negative API/security-header tests, a complete dependency audit and a Worker dry build. See [the scoped hardening report](docs/SECURITY-2026-11-04.md) for controls, limits and rollback instructions. Do not interpret a passing gate as full OWASP certification.

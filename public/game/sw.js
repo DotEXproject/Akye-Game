@@ -1,5 +1,5 @@
-const CACHE = 'akye-shell-v8';
-const SHELL = ['./','./game.js','./experience.js','./online.js','./friends.js','./friends.css','./play-layout.js','./platform.js','./soundscape.js','./arrival.js','./arrival.css','./assets/jubilation-hurray.mp3','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE = 'akye-shell-v9';
+const SHELL = ['./','./actions.js','./game.js','./experience.js','./online.js','./friends.js','./friends.css','./play-layout.js','./platform.js','./soundscape.js','./arrival.js','./arrival.css','./assets/jubilation-hurray.mp3','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
 });
@@ -11,7 +11,7 @@ self.addEventListener('fetch', event => {
   // Never cache profiles, matches, leaderboards, purchases or cross-origin traffic.
   if(event.request.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith('/akye/')) return;
   event.respondWith(fetch(event.request).then(response => {
-    if(response.ok && response.type === 'basic') {
+    if(response.ok && response.type === 'basic' && !url.search && SHELL.includes('./'+url.pathname.slice('/akye/'.length))) {
       const copy = response.clone();
       event.waitUntil(caches.open(CACHE).then(cache => cache.put(event.request, copy)));
     }

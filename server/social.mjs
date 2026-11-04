@@ -41,7 +41,7 @@ export async function identify(request,db){
   const player=await db.prepare('SELECT * FROM players WHERE id=?').bind(id).first();
   return {id:player?id:null,player,token,tokenHash,account};
 }
-async function limited(db,key,max,period=60000){
+export async function limited(db,key,max,period=60000){
   const now=Date.now(),bucket=Math.floor(now/period)*period;
   const r=await db.prepare('INSERT INTO akye_limits(key,bucket,count) VALUES(?,?,1) ON CONFLICT(key,bucket) DO UPDATE SET count=count+1 RETURNING count').bind(key,bucket).first();
   // Bound old rate records, expired sessions and stale presence without scheduled services.

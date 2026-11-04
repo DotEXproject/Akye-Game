@@ -10,7 +10,7 @@ try{
   for(const sql of (await readFile(new URL('../drizzle/0000_perpetual_blink.sql',import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
   const clients=Array.from({length:9},(_,i)=>({cookie:'',ip:'192.0.2.'+i}));
   async function call(w,path,body,origin='https://test.example'){
-    const c=clients[w],r=await handle(new Request('https://test.example/api/achi/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'CF-Connecting-IP':c.ip,...(c.cookie?{cookie:c.cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}),db);
+    const c=clients[w],r=await handle(new Request('https://test.example/api/achi/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json','CF-Connecting-IP':c.ip,...(c.cookie?{cookie:c.cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}),db);
     if(r.headers.has('set-cookie'))c.cookie=r.headers.get('set-cookie').split(';')[0];
     return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')};
   }
