@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const api=readFileSync(new URL('../server/api.mjs',import.meta.url),'utf8');
+const social=readFileSync(new URL('../server/social.mjs',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../standalone/worker.mjs',import.meta.url),'utf8');
+for(const route of ['email\\/(request|verify)','recovery\\/(request|complete)'])assert.ok(api.includes(route),`missing route ${route}`);
+for(const token of ['token_hash','token_expires','attempts>=5','DELETE FROM akye_sessions WHERE player_id=?',"token_kind='recover'","token_kind='verify'",'AKYE_MAILER?.send'])assert.ok(social.includes(token),`missing recovery safeguard ${token}`);
+assert.ok(worker.includes('handle(request, env.DB, env)'));
+assert.ok(social.includes("If a verified recovery email exists"),'recovery response must not enumerate accounts');
+console.log('Recovery route and policy checks passed (static only)');
