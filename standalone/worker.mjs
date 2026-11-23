@@ -20,7 +20,7 @@ export default {
  },
   async route(request, env) {
     const url = new URL(request.url);
-    if(url.pathname.startsWith('/api/achi/')) return handle(request, env.DB);
+    if(url.pathname.startsWith('/api/achi/')) return handle(request, env.DB, env);
     if(url.pathname === '/' || url.pathname === '/akye' || url.pathname === '/akye/index.html')
       return Response.redirect(url.origin + '/akye/' + url.search, 302);
     if(url.pathname === '/game' || url.pathname.startsWith('/game/')) {
