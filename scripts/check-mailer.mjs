@@ -12,6 +12,8 @@ try{
  await mailer.send({to:'guardian@example.test',subject:'Approval',text:'Code: test'});
  assert.equal(calls.length,1);assert.equal(calls[0].url,'https://api.resend.com/emails');
  assert.equal(calls[0].options.headers.Authorization,'Bearer test-only');
+ await assert.rejects(()=>mailer.send({to:'not-an-email',subject:'Approval',text:'Code: test'}),/Invalid outbound email payload/);
+ assert.equal(calls.length,1);
  assert.deepEqual(JSON.parse(calls[0].options.body).to,['guardian@example.test']);
  globalThis.fetch=async()=>new Response('Unavailable',{status:503});
  await assert.rejects(()=>mailer.send({to:'guardian@example.test',subject:'Approval',text:'Code: test'}),/HTTP 503/);
