@@ -7,7 +7,7 @@ export function mailerFor(env){
  if(env.AKYE_MAILER?.send)return env.AKYE_MAILER;
  if(!env.RESEND_API_KEY||!env.AKYE_MAIL_FROM)return null;
  return {async send({to,subject,text}){
-  if(typeof to!=='string'||typeof subject!=='string'||typeof text!=='string')throw new Error('Invalid outbound email payload');
+  if(typeof to!=='string'||typeof subject!=='string'||typeof text!=='string'||!/^\\S+@\\S+\\.\\S+$/.test(to)||!subject.trim()||!text.trim())throw new Error('Invalid outbound email payload');
   const response=await fetch('https://api.resend.com/emails',{
    method:'POST',
    headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},
