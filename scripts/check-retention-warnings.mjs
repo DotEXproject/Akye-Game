@@ -21,6 +21,13 @@ try{
  assert.ok((await db.prepare('SELECT warned_at FROM akye_account_activity WHERE player_id=?').bind(id).first()).warned_at);
  assert.equal((await sendRetentionWarnings(db,env,now,{dryRun:false})).sent,0);
  assert.equal(sent.length,1);
+ // An email delivery failure must not mark a warning as sent.
+ await db.prepare('UPDATE akye_account_activity SET warned_at=NULL WHERE player_id=?').bind(id).run();
+ const failed=await sendRetentionWarnings(db,{AKYE_MAILER:{send:async()=>{throw new Error('SMTP unavailable')}}},now,{dryRun:false});
+ assert.equal(failed.failed,1);assert.equal(failed.sent,0);
+ assert.equal((await db.prepare('SELECT warned_at FROM akye_account_activity WHERE player_id=?').bind(id).first()).warned_at,null);
+ const retried=await sendRetentionWarnings(db,env,now,{dryRun:false});
+ assert.equal(retried.sent,1);assert.equal(sent.length,2);
  assert.ok(await db.prepare('SELECT 1 FROM akye_accounts WHERE player_id=?').bind(id).first());
  console.log('Passed: retention warnings are dry-run by default, use verified email, send once and never delete accounts.');
 }finally{await mf.dispose();}
