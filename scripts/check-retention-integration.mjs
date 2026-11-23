@@ -8,10 +8,10 @@ try{
  const db=await mf.getD1Database('DB');
  for(const sql of (await readFile(new URL('../drizzle/0000_perpetual_blink.sql',import.meta.url),'utf8')).split('--> statement-breakpoint'))await db.prepare(sql).run();
  const now=Date.UTC(2026,10,23,12),{warningBefore,expiryBefore}=inactivityCutoffs(now);
- async function register(handle,ip){
-  const response=await handle(new Request('https://test.example/api/achi/account/register',{method:'POST',headers:{origin:'https://test.example','content-type':'application/json','CF-Connecting-IP':ip},body:JSON.stringify({handle,ageGroup:'adult'})}),db);
+ async function register(playerHandle,ip){
+  const response=await handle(new Request('https://test.example/api/achi/account/register',{method:'POST',headers:{origin:'https://test.example','content-type':'application/json','CF-Connecting-IP':ip},body:JSON.stringify({handle:playerHandle,ageGroup:'adult'})}),db);
   assert.equal(response.status,201,await response.text());
-  return (await db.prepare('SELECT player_id FROM akye_accounts WHERE handle=?').bind(handle).first()).player_id;
+  return (await db.prepare('SELECT player_id FROM akye_accounts WHERE handle=?').bind(playerHandle).first()).player_id;
  }
  const expired=await register('expired_alpha','192.0.2.1'),warning=await register('warning_alpha','192.0.2.2'),active=await register('active_alpha','192.0.2.3');
  await db.prepare('UPDATE akye_account_activity SET last_active=? WHERE player_id=?').bind(expiryBefore-1000,expired).run();
