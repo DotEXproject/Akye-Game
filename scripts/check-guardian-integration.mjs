@@ -22,11 +22,13 @@ try{
  const approvalCode=sent[0].text.match(/Code: ([a-f0-9]{64})/)[1];
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:approvalCode,decision:'approve'})).status,200);
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:approvalCode,decision:'approve'})).status,400);
+ await db.prepare('INSERT INTO rooms(id,p1,p2,state,created,updated) VALUES(?,?,?,?,?,?)').bind('b'.repeat(32),child.player_id,'another-player',JSON.stringify({status:'playing',deadline:Date.now()+60000}),Date.now(),Date.now()).run();
  const revoke=await call('account/guardian/revoke/request',{handle:'child_alpha'});
  assert.equal(revoke.status,200);assert.equal(sent.length,2);
  const revokeCode=sent[1].text.match(/code is: ([a-f0-9]{64})/)[1];
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:revokeCode,decision:'revoke'})).status,200);
  assert.equal((await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(child.player_id).first()).status,'revoked');
+ assert.equal(await db.prepare('SELECT 1 FROM rooms WHERE p1=? OR p2=?').bind(child.player_id,child.player_id).first(),null,'revocation must end active rooms');
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:revokeCode,decision:'revoke'})).status,400);
  const failed=await handle(new Request('https://test.example/api/achi/account/register',{method:'POST',headers:{origin:'https://test.example','content-type':'application/json','CF-Connecting-IP':'198.51.100.200'},body:JSON.stringify({handle:'failed_child',ageGroup:'child',guardianEmail:'guardian@example.test'})}),db,{AKYE_MAILER:{send:async()=>{throw new Error('Provider outage')}}});
  assert.equal(failed.status,503);
