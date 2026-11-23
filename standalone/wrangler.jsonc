@@ -1,5 +1,5 @@
 {
-  "name": "dotex-akye",
+  "name": "akye-game",
   "main": "worker.mjs",
   "compatibility_date": "2026-05-01",
   "assets": {
@@ -21,6 +21,7 @@
     ]
   },
   "vars": {
-    "AKYE_RETENTION_WARNINGS_ENABLED": "false"
+    "AKYE_RETENTION_WARNINGS_ENABLED": "false",
+    "AKYE_MAIL_FROM": "games@dotexsolutions.com"
   }
 }
