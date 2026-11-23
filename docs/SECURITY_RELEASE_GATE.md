@@ -13,7 +13,7 @@
 - [ ] Reconfirm all checks on the **final** branch commit, not an earlier commit
 
 ## Mandatory external and manual acceptance (not yet passed)
-- [ ] Configure a verified sender domain, `RESEND_API_KEY` secret and `AKYE_MAIL_FROM` in the intended deployment environment (never commit secrets)
+- [ ] Configure the verified `dotexsolutions.com` sender domain, `RESEND_API_KEY` secret and `AKYE_MAIL_FROM=games@dotexsolutions.com` in the intended deployment environment (never commit secrets)
 - [ ] Confirm delivery to guardian and verified recovery mailboxes, including invalid, expired, replayed and undelivered messages
 - [ ] Confirm Resend provider domain alignment, SPF/DKIM, suppression handling, quotas and operational monitoring
 - [ ] Test on desktop and mobile browsers: registration, child code backup, guardian approval/revocation, recovery, deletion, multiplayer and offline/reconnect states
