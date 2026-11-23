@@ -173,7 +173,18 @@ export async function social(request,db,ctx,path,body,env={}){
       await db.prepare('UPDATE akye_accounts SET discoverable=0,visible=0 WHERE player_id=?').bind(id).run();
       const code=recoveryCode();
       await db.prepare("INSERT INTO akye_guardians(player_id,guardian_email,status,token_hash,token_expires,token_kind,updated) VALUES(?,?,'pending',?,?,'approve',?)").bind(id,guardianEmail,await digest(code),now+900000,now).run();
-      await env.AKYE_MAILER.send({to:guardianEmail,subject:'Approve an Akye child account',text:`An Akye child account (${handle}) requests your consent. Code: ${code}\nExpires in 15 minutes. If you did not authorise this, do not approve.`});
+      try{
+        await env.AKYE_MAILER.send({to:guardianEmail,subject:'Approve an Akye child account',text:`An Akye child account (${handle}) requests your consent. Code: ${code}\nExpires in 15 minutes. If you did not authorise this, do not approve.`});
+      }catch{
+        // Do not strand an unusable child account when its approval email fails.
+        // Preserve a pre-existing guest player if this was a guest conversion.
+        await db.batch([
+          db.prepare('DELETE FROM akye_guardians WHERE player_id=?').bind(id),
+          db.prepare('DELETE FROM akye_accounts WHERE player_id=?').bind(id),
+          ...(ctx.id?[]:[db.prepare('DELETE FROM players WHERE id=?').bind(id)])
+        ]);
+        return reply({error:'Guardian email could not be delivered. Please retry registration.'},503);
+      }
     }
     await markAccountActive(db,id,now);
     return reply({account:{handle,name,discoverable:!child,visible:!child},guardianStatus:child?'pending':null,signInCode:key},201,child?{}:{'set-cookie':await signIn(db,id)});
