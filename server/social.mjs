@@ -382,3 +382,30 @@ export async function retentionCandidates(db,now=Date.now()){
     WHERE a.last_active<=? ORDER BY a.last_active LIMIT 100`).bind(expiryBefore,warningBefore).all();
   return result.results;
 }
+/**
+ * Send at most one inactivity warning per activity period. Never automatically
+ * erase accounts here: expiry is review-only until the recovery/appeal process
+ * and scheduled-job authentication have been independently accepted.
+ */
+export async function sendRetentionWarnings(db,env={},now=Date.now(),{dryRun=true,limit=100}={}){
+  const {warningBefore,expiryBefore}=inactivityCutoffs(now);
+  const rows=(await db.prepare(`SELECT a.player_id,a.last_active,a.warned_at,r.email
+    FROM akye_account_activity a
+    JOIN akye_accounts p ON p.player_id=a.player_id
+    JOIN akye_recovery r ON r.player_id=a.player_id AND r.verified=1
+    WHERE a.last_active<=? AND a.last_active>? AND a.warned_at IS NULL
+    ORDER BY a.last_active LIMIT ?`).bind(warningBefore,expiryBefore,Math.min(100,Math.max(1,limit))).all()).results;
+  const summary={eligible:rows.length,sent:0,failed:0,dryRun};
+  if(dryRun)return summary;
+  if(!env?.AKYE_MAILER?.send)throw new Error('Verified email delivery is required for retention warnings.');
+  for(const row of rows){
+    try{
+      // Only the account's verified recovery address may receive this notice.
+      await env.AKYE_MAILER.send({to:row.email,subject:'Akye account inactivity notice',
+        text:'Your Akye player account has been inactive for approximately 11 months. Sign in to keep your account active. Accounts reaching 12 months may be subject to retention review. If you need help, use verified email account recovery.'});
+      const updated=await db.prepare('UPDATE akye_account_activity SET warned_at=? WHERE player_id=? AND last_active=? AND warned_at IS NULL').bind(now,row.player_id,row.last_active).run();
+      if(updated.meta.changes)summary.sent++;
+    }catch{summary.failed++;}
+  }
+  return summary;
+}
