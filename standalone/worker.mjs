@@ -1,3 +1,4 @@
+import {withMailer} from '../server/mailer.mjs';
 import {sendRetentionWarnings,retentionCandidates} from '../server/social.mjs';
 import {handle} from '../server/api.mjs';
 const secure=response=>{
@@ -16,6 +17,7 @@ const secure=response=>{
 };
 export default {
  async scheduled(event,env,ctx){
+  env=withMailer(env);
   // Scheduled execution is report-only by default. Explicitly enabling warning
   // delivery requires a verified mail adapter and an operational approval.
   const job=async()=>{
@@ -35,6 +37,7 @@ export default {
   catch{return secure(new Response('Service temporarily unavailable.',{status:503,headers:{'Cache-Control':'no-store'}}));}
  },
   async route(request, env) {
+    env=withMailer(env);
     const url = new URL(request.url);
     if(url.pathname.startsWith('/api/achi/')) return handle(request, env.DB, env);
     if(url.pathname === '/' || url.pathname === '/akye' || url.pathname === '/akye/index.html')
