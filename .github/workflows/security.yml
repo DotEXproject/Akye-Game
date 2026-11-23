@@ -14,3 +14,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run check:release
+      - name: Validate staged account-security checks
+        run: |
+          node scripts/check-recovery-policy.mjs
+          node scripts/check-guardian-policy.mjs
+          node scripts/check-retention.mjs
