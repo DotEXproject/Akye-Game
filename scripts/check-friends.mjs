@@ -18,9 +18,9 @@ try{
   await call(0,'profile',{name:'Ama'});const guestCookie=clients[0].cookie;
   const guestId=(await db.prepare("SELECT id FROM players WHERE name='Ama'").first()).id;
   const handles=['ama_obeng','kofi_obeng','abena_obeng','akosua_obeng'];const keys=[];
-  for(let i=0;i<4;i++){const r=await call(i,'account/register',{handle:handles[i],name:i===0?'Ama':'Player '+i});assert.equal(r.status,201,JSON.stringify(r));assert.match(r.data.signInCode,/^[a-f0-9]{64}$/);assert.match(r.cookie,/HttpOnly; SameSite=Strict/);keys.push(r.data.signInCode);}
+  for(let i=0;i<4;i++){const r=await call(i,'account/register',{handle:handles[i],name:i===0?'Ama':'Player '+i,ageGroup:'adult'});assert.equal(r.status,201,JSON.stringify(r));assert.match(r.data.signInCode,/^[a-f0-9]{64}$/);assert.match(r.cookie,/HttpOnly; SameSite=Strict/);keys.push(r.data.signInCode);}
   assert.equal((await db.prepare('SELECT player_id FROM akye_accounts WHERE handle=?').bind(handles[0]).first()).player_id,guestId);
-  assert.equal((await call(4,'account/register',{handle:'AMA_OBENG'})).status,409);
+  assert.equal((await call(4,'account/register',{handle:'AMA_OBENG',ageGroup:'adult'})).status,409);
   assert.equal((await call(4,'account/register',{handle:'<img onerror=x>'})).status,400);
   clients[4].cookie=guestCookie;assert.equal((await call(4,'profile')).status,401);
   assert.equal((await call(4,'account/login',{handle:handles[0],signInCode:'0'.repeat(64)})).status,401);
