@@ -18,7 +18,7 @@ try{
  const id=(await db.prepare("SELECT player_id FROM akye_accounts WHERE handle='erase_alpha'").first()).player_id;
  await db.prepare('INSERT INTO results(room,p1,p2,winner,created) VALUES(?,?,?,?,?)').bind('e'.repeat(32),id,'other-player',1,Date.now()).run();
  assert.equal((await call('account/delete',{signInCode:'0'.repeat(64)})).status,403);
- assert.equal((await db.prepare('SELECT 1 FROM akye_accounts WHERE player_id=?').bind(id).first())?.[1],undefined);
+ assert.ok(await db.prepare('SELECT 1 FROM akye_accounts WHERE player_id=?').bind(id).first(),'incorrect code must not delete account');
  const deleted=await call('account/delete',{signInCode:secret});
  assert.equal(deleted.status,200);assert.equal(deleted.data.history,'anonymised');
  for(const [table,column] of [['players','id'],['akye_accounts','player_id'],['akye_sessions','player_id'],['akye_account_activity','player_id'],['akye_recovery','player_id'],['akye_guardians','player_id']])
