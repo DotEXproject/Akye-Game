@@ -9,7 +9,7 @@ const url=new URL(request.url),path=url.pathname.replace(/^\/api\/achi\/?/,'').s
 if(!['GET','POST'].includes(request.method))return json({error:'Method not allowed.'},405,{Allow:'GET, POST'});
 const route=path.join('/');
 const getRoutes=/^(profile|leaderboard|account|friends\/search|rooms\/[a-f0-9]{32})$/;
-const postRoutes=/^(profile|rooms|account\/(register|login|logout|settings|rotate|delete|email\/(request|verify)|recovery\/(request|complete))|friends\/(pulse|action)|challenges|challenges\/[a-f0-9]{32}\/(accept|cancel|decline|dismiss)|rooms\/[a-f0-9]{32}\/(join|move|pass|resign))$/;
+const postRoutes=/^(profile|rooms|account\/(register|login|logout|settings|rotate|delete|email\/(request|verify)|recovery\/(request|complete)|guardian\\/(decision|revoke\\/request))|friends\/(pulse|action)|challenges|challenges\/[a-f0-9]{32}\/(accept|cancel|decline|dismiss)|rooms\/[a-f0-9]{32}\/(join|move|pass|resign))$/;
 if(!(request.method==='GET'?getRoutes:postRoutes).test(route))return json({error:'Action not found.'},404);
 if(request.headers.get('sec-fetch-site')==='cross-site')return json({error:'Open the game on its own website.'},403);
 if(request.method!=='GET'&&request.headers.get('origin')!==url.origin)return json({error:'Open the game on its own website.'},403);
