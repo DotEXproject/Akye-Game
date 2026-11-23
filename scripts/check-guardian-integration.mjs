@@ -28,5 +28,8 @@ try{
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:revokeCode,decision:'revoke'})).status,200);
  assert.equal((await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(child.player_id).first()).status,'revoked');
  assert.equal((await call('account/guardian/decision',{handle:'child_alpha',guardianCode:revokeCode,decision:'revoke'})).status,400);
+ const failed=await handle(new Request('https://test.example/api/achi/account/register',{method:'POST',headers:{origin:'https://test.example','content-type':'application/json','CF-Connecting-IP':'198.51.100.200'},body:JSON.stringify({handle:'failed_child',ageGroup:'child',guardianEmail:'guardian@example.test'})}),db,{AKYE_MAILER:{send:async()=>{throw new Error('Provider outage')}}});
+ assert.equal(failed.status,503);
+ assert.equal(await db.prepare("SELECT 1 FROM akye_accounts WHERE handle='failed_child'").first(),null);
  console.log('Passed: guardian registration, email challenge, invalid/one-time approval and revocation, persisted status.');
 }finally{await mf.dispose();}
