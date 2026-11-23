@@ -137,7 +137,7 @@ export async function social(request,db,ctx,path,body,env={}){
     if(!['approve','revoke'].includes(decision)||g.token_kind!==decision)return reply({error:'Invalid guardian decision.'},400);
     await db.batch([
       db.prepare('UPDATE akye_guardians SET status=?,token_hash=NULL,token_expires=NULL,token_kind=NULL,attempts=0,updated=? WHERE player_id=? AND token_hash=?').bind(decision==='approve'?'approved':'revoked',now,a.player_id,g.token_hash),
-      ...(decision==='revoke'?[db.prepare('DELETE FROM akye_sessions WHERE player_id=?').bind(a.player_id),db.prepare('DELETE FROM akye_challenges WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_friends WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_presence WHERE player_id=?').bind(a.player_id)]:[])
+      ...(decision==='revoke'?[db.prepare('DELETE FROM akye_sessions WHERE player_id=?').bind(a.player_id),db.prepare('DELETE FROM rooms WHERE p1=? OR p2=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_challenges WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_friends WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_presence WHERE player_id=?').bind(a.player_id)]:[])
     ]);
     return reply({ok:true,status:decision==='approve'?'approved':'revoked'});
   }
