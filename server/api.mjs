@@ -31,6 +31,12 @@ await ensureSocial(db);
 const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
 if(!await limited(db,'api:'+ip,600))return json({error:'Too many requests. Please wait a minute.'},429,{'Retry-After':'60'});
 const identity=await identify(request,db);let secret=identity.token,id=identity.id,player=identity.player;
+// A revoked or pending child account must not bypass consent through gameplay routes.
+if(identity.account){
+ const guardian=await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(id).first();
+ if(guardian&&guardian.status!=='approved'&&!['account/logout','account/delete'].includes(route))
+  return json({error:'Guardian authorisation required.'},403);
+}
 if(path[0]==='leaderboard'){const rows=await db.prepare(`SELECT p.name,p.id,COUNT(r.room) games,SUM(CASE WHEN (r.p1=p.id AND r.winner=1) OR (r.p2=p.id AND r.winner=2) THEN 1 ELSE 0 END) wins,SUM(CASE WHEN r.winner=0 THEN 1 ELSE 0 END) draws,SUM(CASE WHEN (r.p1=p.id AND r.winner=1) OR (r.p2=p.id AND r.winner=2) THEN 3 WHEN r.winner=0 THEN 1 ELSE 0 END) points FROM players p JOIN results r ON r.p1=p.id OR r.p2=p.id GROUP BY p.id ORDER BY points DESC,wins DESC,p.created ASC LIMIT 50`).all();return json({players:rows.results.map(({id,...p})=>p),policy:'Online leaderboard · 3 points per win, 1 per draw. No local or Okyere results.'});}
 const socialResponse=await social(request,db,identity,path,body,env);if(socialResponse)return socialResponse;
 if(path[0]==='profile'&&request.method==='POST'){if(!player){if(!await limited(db,'guest:'+ip,20))return json({error:'Please wait before creating another player.'},429,{'Retry-After':'60'});secret=random();id=await hash(secret);await db.prepare('INSERT INTO players(id,name,created) VALUES(?,?,?)').bind(id,clean(body.name),Date.now()).run();}else await db.prepare('UPDATE players SET name=? WHERE id=?').bind(clean(body.name),id).run();return json({name:clean(body.name),lives:{enabled:false,cap:5,regenerationSeconds:300,purchasesEnabled:false}},200,{'set-cookie':`__Host-achi=${secret}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=31536000`});}
