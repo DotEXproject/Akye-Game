@@ -46,6 +46,18 @@ jobs:
       - name: Compile unsigned release App Bundle
         working-directory: android
         run: gradle --no-daemon :app:bundleRelease
+      - name: Record build provenance
+        run: |
+          mkdir -p android/dist
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "workflow=${GITHUB_WORKFLOW}"
+            echo "android_application_id=com.dotexsolutions.akye"
+            echo "build_type=debug-apk-and-unsigned-release-aab"
+          } > android/dist/BUILD_INFO.txt
       - name: Record APK and AAB SHA-256 checksums
         run: |
           mkdir -p android/dist
@@ -55,7 +67,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: akye-android-sha256
-          path: android/dist/SHA256SUMS.txt
+          path: |
+            android/dist/SHA256SUMS.txt
+            android/dist/BUILD_INFO.txt
           if-no-files-found: error
           retention-days: 14
       - name: Upload unsigned release AAB for validation
