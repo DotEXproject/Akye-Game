@@ -26,6 +26,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Validate Android release configuration
+        run: node android/scripts/check-release-config.mjs
       - name: Validate Android Digital Asset Links generator
         run: node android/scripts/check-assetlinks.mjs
       - name: Locate Android SDK
