@@ -15,6 +15,9 @@ assert.match(manifest, /android\.permission\.INTERNET/);
 assert.match(manifest, /android:exported="true"/);
 assert.match(manifest, /android:icon="@drawable\/ic_akye"/);
 assert.match(strings, /Akye/);
+assert.match(manifest, /android:autoVerify="true"/);
+assert.match(manifest, /android:host="games\.dotexsolutions\.com"/);
+assert.match(manifest, /android:pathPrefix="\/akye\/"/);
 const permissions = [...manifest.matchAll(/<uses-permission\s+android:name="([^"]+)"/g)].map(x => x[1]);
 assert.deepEqual(permissions, ['android.permission.INTERNET'],
   'Android permissions must be explicitly reviewed before adding them');
