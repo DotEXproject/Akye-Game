@@ -17,7 +17,7 @@
 - [ ] Confirm delivery to guardian and verified recovery mailboxes, including invalid, expired, replayed and undelivered messages
 - [ ] Confirm Resend provider domain alignment, SPF/DKIM, suppression handling, quotas and operational monitoring
 - [ ] Test on desktop and mobile browsers: registration, child code backup, guardian approval/revocation, recovery, deletion, multiplayer and offline/reconnect states
-- [ ] Test game flows against a staging Cloudflare Worker and staging D1 database; do not run destructive tests against production
+- [ ] Test game flows with synthetic accounts on the existing `akye-game` Worker and `dotex-akye` D1 database, which the owner has designated as pre-launch UAT. Record the D1 Time Travel recovery timestamp before any changes. Avoid destructive tests on real records.
 - [ ] Verify tenant/data access boundaries where applicable, session invalidation, CSRF/origin protections, brute-force controls, API authorisation and sensitive-data leakage
 - [ ] Perform a complete OWASP ASVS Level 2 control-by-control assessment with evidence and remediation/retest of all findings
 - [ ] Confirm 12-month inactivity policy, user notices, appeals/recovery and legal/child-data retention requirements before enabling any deletion job
@@ -30,8 +30,8 @@
 - Capture test environment, commit SHA, date, reviewer, results and remediation links for each final acceptance item.
 
 ## Deployment verification
-1. Set up staging bindings and secrets, including a separate staging D1 database and verified sender.
+1. Confirm the existing Cloudflare Worker `akye-game`, D1 binding `dotex-akye`, verified sender and D1 Time Travel availability. The owner waived independent D1 export for pre-launch UAT on 24 November 2026; record the recovery timestamp. This is not a durable backup.
 2. Run `npm ci --ignore-scripts` then `npm run check:release`.
-3. Exercise the staging UI, APIs and live mail flows; record evidence.
+3. Exercise the pre-launch UAT UI, APIs and live mail flows with synthetic accounts; record evidence.
 4. Complete ASVS L2 review, fix findings and rerun CI.
-5. Review database migration and rollback procedures, then request explicit release approval.
+5. Review additive database changes, Time Travel restoration limitations and Worker rollback, then request explicit release approval. The Git integration currently deploys `main`; merging PR #1 will initiate a production-branch build.
