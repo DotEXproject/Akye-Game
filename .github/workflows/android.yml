@@ -39,6 +39,16 @@ jobs:
       - name: Compile debug APK
         working-directory: android
         run: gradle --no-daemon :app:assembleDebug
+      - name: Compile unsigned release App Bundle
+        working-directory: android
+        run: gradle --no-daemon :app:bundleRelease
+      - name: Upload unsigned release AAB for validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-android-unsigned-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload unsigned-for-release debug APK
         uses: actions/upload-artifact@v4
         with:
