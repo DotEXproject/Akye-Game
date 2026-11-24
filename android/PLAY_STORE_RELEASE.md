@@ -7,7 +7,7 @@ Use an Android Trusted Web Activity (TWA) with Chrome Custom Tabs, launching the
 
 - Display name: **Akye · King George**
 - Publisher: **DotEX Solutions**
-- Proposed Android application ID: `com.dotexsolutions.akye` (**confirm before first Play upload; immutable afterwards**)
+- Approved Android application ID: `com.dotexsolutions.akye` (**confirmed by owner 24 November 2026; immutable after first Play upload**)
 - Proposed minimum Android SDK: 26; target latest Play-required API level at submission time
 - Home URL: `https://games.dotexsolutions.com/akye/`
 - Theme/background: `#201b16`
@@ -31,6 +31,6 @@ Use an Android Trusted Web Activity (TWA) with Chrome Custom Tabs, launching the
 The successful Cloudflare Worker deployment is **not** proof of Android app compliance. Do not publish publicly until gameplay, account/guardian flows, child-safety controls, email delivery and OWASP ASVS L2 review are accepted. Account inactivity deletion remains disabled.
 
 ## Pending owner inputs
-- Confirm application ID before first store submission.
+- Application ID confirmed; do not change without explicit owner approval before first store upload.
 - Provide Play Console access or upload the signed AAB manually; Play Console account and signing certificates are not accessible from GitHub alone.
 - Confirm privacy policy, account deletion and support URLs before store review.
