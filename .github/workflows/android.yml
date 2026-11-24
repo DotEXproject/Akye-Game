@@ -46,6 +46,18 @@ jobs:
       - name: Compile unsigned release App Bundle
         working-directory: android
         run: gradle --no-daemon :app:bundleRelease
+      - name: Record APK and AAB SHA-256 checksums
+        run: |
+          mkdir -p android/dist
+          sha256sum android/app/build/outputs/apk/debug/*.apk android/app/build/outputs/bundle/release/*.aab > android/dist/SHA256SUMS.txt
+          cat android/dist/SHA256SUMS.txt
+      - name: Upload build checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-android-sha256
+          path: android/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload unsigned release AAB for validation
         uses: actions/upload-artifact@v4
         with:
