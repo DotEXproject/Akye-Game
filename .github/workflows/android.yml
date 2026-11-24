@@ -26,6 +26,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Validate Android Digital Asset Links generator
+        run: node android/scripts/check-assetlinks.mjs
       - name: Locate Android SDK
         run: echo "ANDROID_HOME=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
       - name: Install Android SDK platform
