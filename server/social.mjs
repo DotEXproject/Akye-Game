@@ -23,6 +23,12 @@ export const socialSchema=[
   `CREATE TABLE IF NOT EXISTS akye_challenges (id TEXT PRIMARY KEY, sender TEXT NOT NULL, receiver TEXT NOT NULL, room TEXT UNIQUE NOT NULL, status TEXT NOT NULL, settings TEXT NOT NULL, created INTEGER NOT NULL, expires INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS akye_challenges_receiver ON akye_challenges(receiver,status,expires)`,
   `CREATE INDEX IF NOT EXISTS akye_challenges_sender ON akye_challenges(sender,status,expires)`,
+  `CREATE TABLE IF NOT EXISTS akye_recovery (player_id TEXT PRIMARY KEY, email TEXT NOT NULL, verified INTEGER NOT NULL DEFAULT 0, pending_email TEXT, token_hash TEXT, token_expires INTEGER, token_kind TEXT, attempts INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE INDEX IF NOT EXISTS akye_recovery_email ON akye_recovery(email)`,
+  `CREATE TABLE IF NOT EXISTS akye_account_activity (player_id TEXT PRIMARY KEY, last_active INTEGER NOT NULL, warned_at INTEGER)`,
+  `CREATE INDEX IF NOT EXISTS akye_account_activity_last_active ON akye_account_activity(last_active)`,
+  `CREATE TABLE IF NOT EXISTS akye_guardians (player_id TEXT PRIMARY KEY, guardian_email TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', token_hash TEXT, token_expires INTEGER, token_kind TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS akye_guardians_email ON akye_guardians(guardian_email)`,
   `CREATE TABLE IF NOT EXISTS akye_limits (key TEXT NOT NULL, bucket INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(key,bucket))`
 ];
 export async function ensureSocial(db){
@@ -59,11 +65,94 @@ async function busy(db,id,now=Date.now()){return !!await db.prepare("SELECT 1 FR
 async function signIn(db,id){const token=random();await db.prepare('INSERT INTO akye_sessions(token_hash,player_id,expires) VALUES(?,?,?)').bind(await digest(token),id,Date.now()+2592000000).run();return cookie(token);}
 const accountView=ctx=>({handle:ctx.account.handle,name:ctx.player.name,discoverable:!!ctx.account.discoverable,visible:!!ctx.account.visible});
 
-export async function social(request,db,ctx,path,body){
+const emailPattern=/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+const validEmail=value=>typeof value==='string'&&value.length<=254&&emailPattern.test(value);
+const recoveryCode=()=>random()+random();
+const recoverMessage=(kind,code)=>({subject:kind==='verify'?'Verify your Akye recovery email':'Recover your Akye player account',text:`Your Akye ${kind==='verify'?'email verification':'account recovery'} code is: ${code}\nThis code expires in 15 minutes. If you did not request this, ignore this email.`});
+// A sender adapter must be configured in the Worker environment; never log codes.
+async function sendRecovery(env,to,kind,code){
+ if(!env?.AKYE_MAILER?.send)return false;
+ const {subject,text}=recoverMessage(kind,code);
+ await env.AKYE_MAILER.send({to,subject,text});
+ return true;
+}
+export async function social(request,db,ctx,path,body,env={}){
   const action=path.join('/'),post=request.method==='POST',now=Date.now();
   if(path[0]!=='account'&&path[0]!=='friends'&&path[0]!=='challenges')return null;
   if(!['GET','POST'].includes(request.method))return reply({error:'Method not allowed.'},405);
-  if(action==='account'&&!post)return reply({account:ctx.account?accountView(ctx):null});
+  if(action==='account'&&!post){
+    if(ctx.account)await markAccountActive(db,ctx.id,now);
+    return reply({account:ctx.account?accountView(ctx):null});
+  }
+  if(action==='account/recovery/request'&&post){
+    // Always return the same result regardless of account existence.
+    const handle=handleOf(body.handle);
+    const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
+    if(!await limited(db,'recover-ip:'+ip,5,3600000))return reply({error:'Please wait before trying again.'},429);
+    if(validHandle(handle)){
+      const a=await targetAccount(db,handle);
+      if(a){
+        const rec=await db.prepare('SELECT email,verified FROM akye_recovery WHERE player_id=?').bind(a.player_id).first();
+        if(rec?.verified&&env?.AKYE_MAILER?.send){
+          const code=recoveryCode();
+          await db.prepare("UPDATE akye_recovery SET token_hash=?,token_expires=?,token_kind='recover',attempts=0 WHERE player_id=? AND verified=1").bind(await digest(code),now+900000,a.player_id).run();
+          await sendRecovery(env,rec.email,'recover',code);
+        }
+      }
+    }
+    return reply({ok:true,message:'If a verified recovery email exists, a code will be sent.'});
+  }
+  if(action==='account/recovery/complete'&&post){
+    const handle=handleOf(body.handle),code=String(body.recoveryCode||''),ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
+    if(!await limited(db,'recover-complete:'+ip,10,3600000))return reply({error:'Please wait before trying again.'},429);
+    const a=validHandle(handle)?await targetAccount(db,handle):null;
+    const rec=a?await db.prepare('SELECT * FROM akye_recovery WHERE player_id=?').bind(a.player_id).first():null;
+    if(!rec||!rec.verified||rec.token_kind!=='recover'||rec.token_expires<=now||rec.attempts>=5||!/^[a-f0-9]{64}$/.test(code)||await digest(code)!==rec.token_hash){
+      if(rec)await db.prepare('UPDATE akye_recovery SET attempts=attempts+1 WHERE player_id=?').bind(a.player_id).run();
+      return reply({error:'Recovery code is invalid or expired.'},400);
+    }
+    const guardian=await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(a.player_id).first();
+    if(guardian&&guardian.status!=='approved')return reply({error:'Guardian authorisation required.'},403);
+    const key=secretKey();
+    await db.batch([
+      db.prepare('UPDATE akye_accounts SET key_hash=? WHERE player_id=?').bind(await digest(key),a.player_id),
+      db.prepare('DELETE FROM akye_sessions WHERE player_id=?').bind(a.player_id),
+      db.prepare('UPDATE akye_recovery SET token_hash=NULL,token_expires=NULL,token_kind=NULL,attempts=0 WHERE player_id=? AND token_hash=?').bind(a.player_id,rec.token_hash)
+    ]);
+    return reply({ok:true,signInCode:key},200,{'set-cookie':await signIn(db,a.player_id)});
+  }
+  // Guardian approval is completed using a code sent to the guardian's email,
+  // never the child's session. No social interaction before approval.
+  if(action==='account/guardian/decision'&&post){
+    const handle=handleOf(body.handle),code=String(body.guardianCode||'');
+    const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
+    if(!await limited(db,'guardian-decision:'+ip,10,3600000))return reply({error:'Too many attempts.'},429);
+    const a=validHandle(handle)?await targetAccount(db,handle):null;
+    const g=a?await db.prepare('SELECT * FROM akye_guardians WHERE player_id=?').bind(a.player_id).first():null;
+    if(!g||!g.token_hash||g.token_expires<=now||g.attempts>=5||!/^[a-f0-9]{64}$/.test(code)||await digest(code)!==g.token_hash){
+      if(g)await db.prepare('UPDATE akye_guardians SET attempts=attempts+1 WHERE player_id=?').bind(a.player_id).run();
+      return reply({error:'Invalid or expired guardian code.'},400);
+    }
+    const decision=body.decision;
+    if(!['approve','revoke'].includes(decision)||g.token_kind!==decision)return reply({error:'Invalid guardian decision.'},400);
+    await db.batch([
+      db.prepare('UPDATE akye_guardians SET status=?,token_hash=NULL,token_expires=NULL,token_kind=NULL,attempts=0,updated=? WHERE player_id=? AND token_hash=?').bind(decision==='approve'?'approved':'revoked',now,a.player_id,g.token_hash),
+      ...(decision==='revoke'?[db.prepare('DELETE FROM akye_sessions WHERE player_id=?').bind(a.player_id),db.prepare('DELETE FROM rooms WHERE p1=? OR p2=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_challenges WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_friends WHERE sender=? OR receiver=?').bind(a.player_id,a.player_id),db.prepare('DELETE FROM akye_presence WHERE player_id=?').bind(a.player_id)]:[])
+    ]);
+    return reply({ok:true,status:decision==='approve'?'approved':'revoked'});
+  }
+  if(action==='account/guardian/revoke/request'&&post){
+    const handle=handleOf(body.handle),ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
+    if(!await limited(db,'guardian-revoke:'+ip,5,3600000))return reply({error:'Please wait before trying again.'},429);
+    const a=validHandle(handle)?await targetAccount(db,handle):null;
+    const g=a?await db.prepare('SELECT * FROM akye_guardians WHERE player_id=?').bind(a.player_id).first():null;
+    if(g&&env?.AKYE_MAILER?.send){
+      const code=recoveryCode();
+      await db.prepare("UPDATE akye_guardians SET token_hash=?,token_expires=?,token_kind='revoke',attempts=0 WHERE player_id=?").bind(await digest(code),now+900000,a.player_id).run();
+      await env.AKYE_MAILER.send({to:g.guardian_email,subject:'Akye guardian consent revocation',text:`Your guardian revocation code is: ${code}\nExpires in 15 minutes. If you did not request this, ignore it.`});
+    }
+    return reply({ok:true,message:'If a guardian is registered, a revocation code will be sent.'});
+  }
   if(action==='account/register'&&post){
     if(ctx.account)return reply({error:'You already have a player account.'},409);
     const handle=handleOf(body.handle);
@@ -71,12 +160,34 @@ export async function social(request,db,ctx,path,body){
     const ip=await digest(request.headers.get('CF-Connecting-IP')||'local');
     if(!await limited(db,'register:'+ip,5,86400000))return reply({error:'Please try creating an account tomorrow.'},429);
     if(await targetAccount(db,handle))return reply({error:'That player ID is already taken.'},409);
+    if(!['adult','child'].includes(body.ageGroup))return reply({error:'Select adult or child account.'},400);
+    const child=body.ageGroup==='child';
+    const guardianEmail=String(body.guardianEmail||'').trim().toLowerCase();
+    if(child&&(!validEmail(guardianEmail)||!env?.AKYE_MAILER?.send))return reply({error:'Child accounts require a guardian email and configured email delivery.'},503);
     const id=ctx.id||random(),key=secretKey(),name=String(body.name||handle).trim().slice(0,24)||handle;
     try{await db.batch([
       db.prepare('INSERT INTO players(id,name,created) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name').bind(id,name,now),
       db.prepare('INSERT INTO akye_accounts(player_id,handle,key_hash) VALUES(?,?,?)').bind(id,handle,await digest(key))
     ]);}catch{return reply({error:'That player ID is already taken. Choose another.'},409);}
-    return reply({account:{handle,name,discoverable:true,visible:true},signInCode:key},201,{'set-cookie':await signIn(db,id)});
+    if(child){
+      await db.prepare('UPDATE akye_accounts SET discoverable=0,visible=0 WHERE player_id=?').bind(id).run();
+      const code=recoveryCode();
+      await db.prepare("INSERT INTO akye_guardians(player_id,guardian_email,status,token_hash,token_expires,token_kind,updated) VALUES(?,?,'pending',?,?,'approve',?)").bind(id,guardianEmail,await digest(code),now+900000,now).run();
+      try{
+        await env.AKYE_MAILER.send({to:guardianEmail,subject:'Approve an Akye child account',text:`An Akye child account (${handle}) requests your consent. Code: ${code}\nExpires in 15 minutes. If you did not authorise this, do not approve.`});
+      }catch{
+        // Do not strand an unusable child account when its approval email fails.
+        // Preserve a pre-existing guest player if this was a guest conversion.
+        await db.batch([
+          db.prepare('DELETE FROM akye_guardians WHERE player_id=?').bind(id),
+          db.prepare('DELETE FROM akye_accounts WHERE player_id=?').bind(id),
+          ...(ctx.id?[]:[db.prepare('DELETE FROM players WHERE id=?').bind(id)])
+        ]);
+        return reply({error:'Guardian email could not be delivered. Please retry registration.'},503);
+      }
+    }
+    await markAccountActive(db,id,now);
+    return reply({account:{handle,name,discoverable:!child,visible:!child},guardianStatus:child?'pending':null,signInCode:key},201,child?{}:{'set-cookie':await signIn(db,id)});
   }
   if(action==='account/login'&&post){
     const handle=handleOf(body.handle),key=String(body.signInCode||'').trim().toLowerCase();
@@ -85,11 +196,41 @@ export async function social(request,db,ctx,path,body){
     const a=validHandle(handle)?await targetAccount(db,handle):null;
     const hashed=await digest(key);
     if(!a||! /^[a-f0-9]{64}$/.test(key)||hashed!==a.key_hash)return reply({error:'Player ID or private sign-in code is incorrect.'},401);
+    const guardian=await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(a.player_id).first();
+    if(guardian&&guardian.status!=='approved')return reply({error:'Guardian authorisation required.'},403);
     if(ctx.tokenHash)await db.prepare('DELETE FROM akye_sessions WHERE token_hash=?').bind(ctx.tokenHash).run();
+    await markAccountActive(db,a.player_id,now);
     return reply({account:{handle:a.handle,name:a.name,discoverable:!!a.discoverable,visible:!!a.visible}},200,{'set-cookie':await signIn(db,a.player_id)});
   }
   if(!ctx.account)return reply({error:'Create a player account or sign in to use friends.'},401);
   const id=ctx.id;
+  const guardian=await db.prepare('SELECT status FROM akye_guardians WHERE player_id=?').bind(id).first();
+  if(guardian&&guardian.status!=='approved'&&action!=='account/delete'&&action!=='account/logout')return reply({error:'Guardian authorisation required.'},403);
+  if(action!=='account/delete')await markAccountActive(db,id,now);
+  if(action==='account/email/request'&&post){
+    const email=String(body.email||'').trim().toLowerCase();
+    if(!validEmail(email))return reply({error:'Enter a valid recovery email.'},400);
+    if(!await limited(db,'verify-email:'+id,3,3600000))return reply({error:'Please wait before requesting another verification.'},429);
+    if(!env?.AKYE_MAILER?.send)return reply({error:'Email verification is not configured.'},503);
+    const code=recoveryCode();
+    await db.prepare(`INSERT INTO akye_recovery(player_id,email,verified,pending_email,token_hash,token_expires,token_kind,attempts)
+      VALUES(?,?,0,?,?,?,'verify',0)
+      ON CONFLICT(player_id) DO UPDATE SET pending_email=excluded.pending_email,token_hash=excluded.token_hash,
+      token_expires=excluded.token_expires,token_kind='verify',attempts=0`).bind(id,email,email,await digest(code),now+900000).run();
+    await sendRecovery(env,email,'verify',code);
+    return reply({ok:true});
+  }
+  if(action==='account/email/verify'&&post){
+    const code=String(body.recoveryCode||'');
+    const rec=await db.prepare('SELECT * FROM akye_recovery WHERE player_id=?').bind(id).first();
+    if(!rec||rec.token_kind!=='verify'||rec.token_expires<=now||rec.attempts>=5||!/^[a-f0-9]{64}$/.test(code)||await digest(code)!==rec.token_hash){
+      if(rec)await db.prepare('UPDATE akye_recovery SET attempts=attempts+1 WHERE player_id=?').bind(id).run();
+      return reply({error:'Verification code is invalid or expired.'},400);
+    }
+    await db.prepare(`UPDATE akye_recovery SET email=pending_email,verified=1,pending_email=NULL,
+      token_hash=NULL,token_expires=NULL,token_kind=NULL,attempts=0 WHERE player_id=? AND token_hash=?`).bind(id,rec.token_hash).run();
+    return reply({ok:true,verified:true});
+  }
   if(action==='account/logout'&&post){
     if(ctx.tokenHash)await db.prepare('DELETE FROM akye_sessions WHERE token_hash=?').bind(ctx.tokenHash).run();
     await db.prepare('DELETE FROM akye_presence WHERE player_id=?').bind(id).run();
@@ -99,6 +240,31 @@ export async function social(request,db,ctx,path,body){
     if(typeof body.visible!=='boolean'||typeof body.discoverable!=='boolean')return reply({error:'Choose valid privacy settings.'},400);
     await db.prepare('UPDATE akye_accounts SET visible=?,discoverable=? WHERE player_id=?').bind(+body.visible,+body.discoverable,id).run();
     return reply({ok:true});
+  }
+  if(action==='account/delete'&&post){
+    // Require the private code even when an authenticated browser session exists.
+    const key=String(body.signInCode||'').trim().toLowerCase();
+    if(!/^[a-f0-9]{64}$/.test(key)||await digest(key)!==await db.prepare('SELECT key_hash FROM akye_accounts WHERE player_id=?').bind(id).first().then(row=>row?.key_hash))
+      return reply({error:'Private code verification failed.'},403);
+    const alias='deleted:'+random();
+    // A deleted player's historical results remain statistically usable but cannot
+    // be joined back to their profile or account. Active rooms are removed.
+    await db.batch([
+      db.prepare('UPDATE results SET p1=? WHERE p1=?').bind(alias,id),
+      db.prepare('UPDATE results SET p2=? WHERE p2=?').bind(alias,id),
+      db.prepare('DELETE FROM rooms WHERE p1=? OR p2=?').bind(id,id),
+      db.prepare('DELETE FROM akye_challenges WHERE sender=? OR receiver=?').bind(id,id),
+      db.prepare('DELETE FROM akye_friends WHERE sender=? OR receiver=?').bind(id,id),
+      db.prepare('DELETE FROM akye_blocks WHERE owner=? OR target=?').bind(id,id),
+      db.prepare('DELETE FROM akye_presence WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM akye_sessions WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM akye_account_activity WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM akye_recovery WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM akye_guardians WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM akye_accounts WHERE player_id=?').bind(id),
+      db.prepare('DELETE FROM players WHERE id=?').bind(id)
+    ]);
+    return reply({ok:true,history:'anonymised'},200,{'set-cookie':'__Host-achi=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'});
   }
   if(action==='account/rotate'&&post){
     const key=secretKey();
@@ -205,4 +371,52 @@ export async function social(request,db,ctx,path,body){
     return reply({room:c.room});
   }
   return reply({error:'Action not found.'},404);
+}
+
+// 12-month inactivity uses calendar months. Candidates are review-only until
+// notification and recovery have been verified end-to-end.
+export async function markAccountActive(db,id,now=Date.now()){
+  await db.prepare(`INSERT INTO akye_account_activity(player_id,last_active,warned_at)
+    VALUES(?,?,NULL) ON CONFLICT(player_id) DO UPDATE SET
+    last_active=excluded.last_active,warned_at=NULL`).bind(id,now).run();
+}
+export function inactivityCutoffs(now=Date.now()){
+  const date=new Date(now);
+  const monthsAgo=n=>{const d=new Date(date);const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-n);const max=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,max));return d.getTime();};
+  return {warningBefore:monthsAgo(11),expiryBefore:monthsAgo(12)};
+}
+export async function retentionCandidates(db,now=Date.now()){
+  const {warningBefore,expiryBefore}=inactivityCutoffs(now);
+  const result=await db.prepare(`SELECT a.player_id,a.last_active,a.warned_at,
+    CASE WHEN a.last_active<=? THEN 'expired' ELSE 'warning' END status
+    FROM akye_account_activity a JOIN akye_accounts p ON p.player_id=a.player_id
+    WHERE a.last_active<=? ORDER BY a.last_active LIMIT 100`).bind(expiryBefore,warningBefore).all();
+  return result.results;
+}
+/**
+ * Send at most one inactivity warning per activity period. Never automatically
+ * erase accounts here: expiry is review-only until the recovery/appeal process
+ * and scheduled-job authentication have been independently accepted.
+ */
+export async function sendRetentionWarnings(db,env={},now=Date.now(),{dryRun=true,limit=100}={}){
+  const {warningBefore,expiryBefore}=inactivityCutoffs(now);
+  const rows=(await db.prepare(`SELECT a.player_id,a.last_active,a.warned_at,r.email
+    FROM akye_account_activity a
+    JOIN akye_accounts p ON p.player_id=a.player_id
+    JOIN akye_recovery r ON r.player_id=a.player_id AND r.verified=1
+    WHERE a.last_active<=? AND a.last_active>? AND a.warned_at IS NULL
+    ORDER BY a.last_active LIMIT ?`).bind(warningBefore,expiryBefore,Math.min(100,Math.max(1,limit))).all()).results;
+  const summary={eligible:rows.length,sent:0,failed:0,dryRun};
+  if(dryRun)return summary;
+  if(!env?.AKYE_MAILER?.send)throw new Error('Verified email delivery is required for retention warnings.');
+  for(const row of rows){
+    try{
+      // Only the account's verified recovery address may receive this notice.
+      await env.AKYE_MAILER.send({to:row.email,subject:'Akye account inactivity notice',
+        text:'Your Akye player account has been inactive for approximately 11 months. Sign in to keep your account active. Accounts reaching 12 months may be subject to retention review. If you need help, use verified email account recovery.'});
+      const updated=await db.prepare('UPDATE akye_account_activity SET warned_at=? WHERE player_id=? AND last_active=? AND warned_at IS NULL').bind(now,row.player_id,row.last_active).run();
+      if(updated.meta.changes)summary.sent++;
+    }catch{summary.failed++;}
+  }
+  return summary;
 }

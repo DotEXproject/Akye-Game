@@ -1,7 +1,27 @@
 {
-  "name": "dotex-akye",
+  "name": "akye-game",
   "main": "worker.mjs",
   "compatibility_date": "2026-05-01",
-  "assets": {"directory": "../public", "binding": "ASSETS", "run_worker_first": true},
-  "d1_databases": [{"binding": "DB", "database_name": "dotex-akye", "database_id": "072d92c7-08a8-4807-b6c8-cb9c3044c3e1", "migrations_dir": "../drizzle"}]
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dotex-akye",
+      "database_id": "072d92c7-08a8-4807-b6c8-cb9c3044c3e1",
+      "migrations_dir": "../drizzle"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "0 8 * * *"
+    ]
+  },
+  "vars": {
+    "AKYE_RETENTION_WARNINGS_ENABLED": "false",
+    "AKYE_MAIL_FROM": "games@dotexsolutions.com"
+  }
 }

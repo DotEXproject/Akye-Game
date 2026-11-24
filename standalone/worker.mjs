@@ -1,3 +1,5 @@
+import {withMailer} from '../server/mailer.mjs';
+import {sendRetentionWarnings,retentionCandidates} from '../server/social.mjs';
 import {handle} from '../server/api.mjs';
 const secure=response=>{
  const headers=new Headers(response.headers);
@@ -14,13 +16,30 @@ const secure=response=>{
  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 };
 export default {
+ async scheduled(event,env,ctx){
+  env=withMailer(env);
+  // Scheduled execution is report-only by default. Explicitly enabling warning
+  // delivery requires a verified mail adapter and an operational approval.
+  const job=async()=>{
+   const candidates=await retentionCandidates(env.DB);
+   const result=await sendRetentionWarnings(env.DB,env,Date.now(),{
+    dryRun:env.AKYE_RETENTION_WARNINGS_ENABLED!=='true'
+   });
+   console.info('Akye retention summary',JSON.stringify({
+    candidates:candidates.length,eligible:result.eligible,
+    sent:result.sent,failed:result.failed,dryRun:result.dryRun
+   }));
+  };
+  ctx.waitUntil(job());
+ },
  async fetch(request,env){
   try{return secure(await this.route(request,env));}
   catch{return secure(new Response('Service temporarily unavailable.',{status:503,headers:{'Cache-Control':'no-store'}}));}
  },
   async route(request, env) {
+    env=withMailer(env);
     const url = new URL(request.url);
-    if(url.pathname.startsWith('/api/achi/')) return handle(request, env.DB);
+    if(url.pathname.startsWith('/api/achi/')) return handle(request, env.DB, env);
     if(url.pathname === '/' || url.pathname === '/akye' || url.pathname === '/akye/index.html')
       return Response.redirect(url.origin + '/akye/' + url.search, 302);
     if(url.pathname === '/game' || url.pathname.startsWith('/game/')) {

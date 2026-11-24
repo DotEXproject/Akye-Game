@@ -1,0 +1,23 @@
+{
+  "name": "akye-game-staging",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-05-01",
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dotex-akye-staging",
+      "database_id": "REPLACE_WITH_STAGING_D1_DATABASE_ID",
+      "migrations_dir": "../drizzle"
+    }
+  ],
+  "triggers": {"crons": []},
+  "vars": {
+    "AKYE_MAIL_FROM": "games@dotexsolutions.com",
+    "AKYE_RETENTION_WARNINGS_ENABLED": "false"
+  }
+}
