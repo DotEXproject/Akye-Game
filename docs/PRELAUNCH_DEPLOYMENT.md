@@ -43,3 +43,9 @@ Review for compatibility; do not paste any account data or secrets. The user has
 
 ## Deployment status
 This document records a backup exception only. It does **not** authorise bypassing security acceptance or automatically merge PR #1. Current Cloudflare Git integration deploys `main`, not the security branch. CI success is not evidence of live email delivery, OWASP ASVS L2 acceptance or successful Cloudflare deployment.
+
+## Verified repository configuration — 24 November 2026
+- `standalone/wrangler.jsonc` specifies Worker `akye-game`, `DB` binding to D1 `dotex-akye` (`072d92c7-08a8-4807-b6c8-cb9c3044c3e1`), `AKYE_MAIL_FROM=games@dotexsolutions.com` and `AKYE_RETENTION_WARNINGS_ENABLED=false`. This is **source configuration evidence**, not a live binding inspection.
+- `package.json` runs `npm test`, `npm audit --audit-level=low` and `wrangler deploy --dry-run --config standalone/wrangler.jsonc` under `check:release`.
+- GitHub Actions run `45295788427` passed on commit `7d3f737fa1da8289fdccf5f397d22efca90f39ef`. Any later code change requires a fresh passing run.
+- Cloudflare's production branch is `main`; the security branch remains in draft PR #1. Do not merge solely because CI passes. Live email, browser and OWASP ASVS L2 evidence remains outstanding.
