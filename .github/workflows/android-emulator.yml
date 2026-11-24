@@ -1,5 +1,11 @@
 name: Android emulator smoke test
 on:
+  push:
+    branches:
+      - feature/android-play-store
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-emulator.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,3 +36,4 @@ jobs:
             adb shell am start -W -n com.dotexsolutions.akye/.MainActivity
             sleep 8
             adb shell pidof com.dotexsolutions.akye
+            adb shell dumpsys activity activities | grep 'com.dotexsolutions.akye'
