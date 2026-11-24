@@ -33,3 +33,14 @@ Use synthetic adult and child test accounts only. Test guardian registration, ap
 
 ## Stop conditions
 Stop if the database backup cannot be verified, schema is incompatible, secrets are absent, live email fails, or security checks fail. Preserve the existing deployment and investigate.
+
+## Live schema comparison — 24 November 2026 (read-only dashboard evidence)
+The Cloudflare D1 console showed existing tables: `_cf_KV`, `akye_accounts`, `akye_blocks`, `akye_challenges`, `akye_friends`, `akye_limits`, `akye_presence`, `akye_sessions`, `players`, `results`, `rooms`. The account table columns are `player_id`, `handle`, `key_hash`, `discoverable`, `visible`. The security-branch `socialSchema` retains those columns and creates `akye_recovery`, `akye_guardians`, `akye_account_activity` separately with `CREATE TABLE IF NOT EXISTS`.
+
+**Not yet verified:** indexes/constraints for the existing tables, actual record counts, a durable backup, and safe rollback for new writes. The Cloudflare dashboard displays a 7-day D1 Time Travel window, which is not an independent exported backup.
+
+Read-only follow-up SQL in the D1 console:
+```sql
+SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type IN ('table','index') AND name NOT LIKE 'sqlite_%' ORDER BY type, name;
+```
+Review for compatibility; do not paste any account data or secrets. For a pre-launch rollout, take a verified backup before deploying and use synthetic test accounts. This is not yet deployment approval.
