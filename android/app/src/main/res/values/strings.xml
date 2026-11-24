@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Akye · King George</string>
+    <!-- Placeholder: Play app-signing SHA-256 is required for verified TWA. -->
+    <string name="asset_statements">[]</string>
+</resources>
