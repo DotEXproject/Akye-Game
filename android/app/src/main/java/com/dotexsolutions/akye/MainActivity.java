@@ -1,25 +1,16 @@
 package com.dotexsolutions.akye;
 
-import android.app.Activity;
 import android.net.Uri;
-import android.os.Bundle;
-import androidx.browser.customtabs.CustomTabsIntent;
+import com.google.androidbrowserhelper.trusted.LauncherActivity;
 
 /**
- * Android launcher for the live Akye game.
- * This is a Custom Tab fallback while the signed TWA + Digital Asset Links
- * verification is being completed. Do not describe it as a verified TWA.
+ * Trusted Web Activity launcher for the existing Akye PWA.
+ * Browser chrome is removed only after Android Digital Asset Links verification.
+ * The Play app-signing fingerprint must be published on the game domain.
  */
-public final class MainActivity extends Activity {
-    private static final String GAME_URL = "https://games.dotexsolutions.com/akye/";
-
+public final class MainActivity extends LauncherActivity {
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        CustomTabsIntent intent = new CustomTabsIntent.Builder()
-                .setShowTitle(false)
-                .build();
-        intent.launchUrl(this, Uri.parse(GAME_URL));
-        finish();
+    protected Uri getLaunchingUrl() {
+        return Uri.parse("https://games.dotexsolutions.com/akye/");
     }
 }
