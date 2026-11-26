@@ -80,21 +80,21 @@ jobs:
             android/dist/SHA256SUMS.txt
             android/dist/BUILD_INFO.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
       - name: Upload unsigned release AAB for validation
         uses: actions/upload-artifact@v4
         with:
           name: akye-android-unsigned-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
       - name: Upload unsigned-for-release debug APK
         uses: actions/upload-artifact@v4
         with:
           name: akye-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
   android-emulator:
     needs: android-debug
@@ -107,6 +107,8 @@ jobs:
           path: apk
       - name: Install and launch on emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID_I_WANT_MY_TCG: 'yes'
         with:
           api-level: 35
           target: google_apis_playstore
