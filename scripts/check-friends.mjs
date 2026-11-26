@@ -63,8 +63,8 @@ try{
   await db.prepare('UPDATE akye_sessions SET expires=0').run();assert.equal((await call(0,'profile')).status,401);
   for(let i=0;i<15;i++)await call(6,'account/login',{handle:'nobody_here',signInCode:'0'.repeat(64)});assert.equal((await call(6,'account/login',{handle:'nobody_here',signInCode:'0'.repeat(64)})).status,429);
   // Boundary tests isolate the slide cap from repetition and placement wins.
-  const state=initial(3,true,['cowrie','gye']);Object.assign(state,{board:[1,2,1,2,0,2,1,0,0],placed:[0,3,3],turn:1,status:'playing',slides:38});
-  let s=play(state,[6,7]);assert.equal(s.slides,39);assert.equal(s.status,'playing');s=play(s,[5,8]);assert.equal(s.status,'finished');assert.equal(s.winner,0);assert.equal(s.reason,'40 slides without a winner');
-  let win=structuredClone(state);win.slides=39;win.board=[1,2,2,2,0,0,1,0,1];assert.ok(legal(win,1).some(m=>m[0]===6&&m[1]===4));win=play(win,[6,4]);assert.equal(win.winner,1);
-  console.log('Passed: guest-to-account continuity, cross-device sign-in, cookie rotation/expiry, private credentials, CSRF, discovery privacy, friend consent, presence, blocking, room isolation, atomic challenge acceptance, concurrent challenge exclusion, results and 40-slide boundary/win priority.');
+  const state=initial(3,true,['cowrie','gye']);Object.assign(state,{board:[1,2,1,2,0,2,1,0,0],placed:[0,3,3],turn:1,status:'playing',slides:98});
+  let s=play(state,[6,7]);assert.equal(s.slides,99);assert.equal(s.status,'playing');s=play(s,[5,8]);assert.equal(s.status,'finished');assert.equal(s.winner,0);assert.equal(s.reason,'100 slides without a winner');
+  let win=structuredClone(state);win.slides=99;win.board=[1,2,2,2,0,0,1,0,1];assert.ok(legal(win,1).some(m=>m[0]===6&&m[1]===4));win=play(win,[6,4]);assert.equal(win.winner,1);
+  console.log('Passed: guest-to-account continuity, cross-device sign-in, cookie rotation/expiry, private credentials, CSRF, discovery privacy, friend consent, presence, blocking, room isolation, atomic challenge acceptance, concurrent challenge exclusion, results and 100-slide boundary/win priority.');
 }finally{Date.now=realNow;await mf.dispose();}
