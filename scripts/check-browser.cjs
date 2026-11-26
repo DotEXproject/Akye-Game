@@ -26,6 +26,7 @@ const fs=require('node:fs');
    await click('#counts [data-n="3"]');
    await page.locator('#variant').selectOption('all');
    await click('#startMatch');
+   await click('#chooseNormal');
    await page.locator('#board .node').first().waitFor();
    assert.equal(await page.locator('#board .node').count(),9);
    const board=await page.locator('#board').boundingBox();
