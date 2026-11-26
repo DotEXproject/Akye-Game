@@ -40,5 +40,8 @@ try{
  const failed=await worker.fetch(new Request('https://test.example/akye/'),{ASSETS:{fetch(){throw Error('secret internal details');}}});
  assert.equal(failed.status,503);assert.ok(!(await failed.text()).includes('secret'));
  for(const file of ['index.html','game.js','experience.js','friends.js','online.js'])assert.doesNotMatch(await readFile(new URL('../public/game/'+file,import.meta.url),'utf8'),/\bonclick\s*=["\x27]/);
+ const ruleCopy=await Promise.all(['game.js','experience.js','friends.js','online.js'].map(file=>readFile(new URL('../public/game/'+file,import.meta.url),'utf8')));
+ assert.ok(ruleCopy.some(source=>source.includes('Five repeated positions')&&source.includes('100 slides')),'client copy states the approved draw thresholds');
+ assert.ok(ruleCopy.every(source=>!/(?:Three repeated positions|Threefold repetition|40 slides without a winner)/.test(source)),'no stale draw rules remain in browser copy');
  console.log('Passed: exact routes/methods, origin/fetch metadata, JSON media type/shape/types, bounded UTF-8 bodies, concurrent guest/room limits, security headers across responses and safe failure envelope.');
 }finally{await mf.dispose();}

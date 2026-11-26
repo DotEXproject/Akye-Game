@@ -2,7 +2,7 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 (async()=>{
- const browser=await chromium.launch();
+ const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||undefined});
  fs.mkdirSync('browser-evidence',{recursive:true});
  try {
  for(const [name,options] of [['desktop',{viewport:{width:1440,height:900}}],['mobile',{viewport:{width:390,height:844},isMobile:true,hasTouch:true}]]){
@@ -12,6 +12,14 @@ const fs=require('node:fs');
   page.on('pageerror',e=>errors.push(e.message));
   try {
    await page.goto('http://127.0.0.1:8765/game/',{waitUntil:'domcontentloaded'});
+   // The production introduction is intentionally modal and makes the page inert.
+   // Dismiss it through its normal silent-entry action before testing the game UI.
+   const silentEntry=page.locator('#akye-arrival [data-silent]');
+   if(await silentEntry.isVisible()){
+    await silentEntry.click();
+    const skip=page.locator('#akye-arrival [data-skip]');
+    if(await skip.isVisible())await skip.click();
+   }
    const click=async selector=>{const l=page.locator(selector);await l.waitFor({state:'visible'});if(options.hasTouch)await l.tap();else await l.click();};
    if(await page.locator('#selectPlayers').isVisible())await click('#selectPlayers');
    await click('#local');

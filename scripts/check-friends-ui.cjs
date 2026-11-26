@@ -34,7 +34,7 @@ const extra=`
   if(calls.filter(x=>x==='rooms/'+room+'/join').length!==joins)throw Error('accepted challenge reopened');
   check(\`leaveOnline();count=3;centre=true;begin(false);b=[1,2,1,2,0,2,1,0,0];placed=[0,3,3];p=1;slides=98;seen=new Map();move([6,7]);if(ended||slides!==99)throw Error('early local draw');move([5,8]);if(!ended||slides!==100)throw Error('local draw cap');\`);
   check(\`for(const computer of [false,true]){begin(computer);count=3;centre=true;b=[1,2,1,2,0,2,1,0,0];placed=[0,3,3];p=1;slides=0;seen=new Map();for(let i=0;i<4;i++){remember();if(ended)throw Error('early repetition draw');}remember();if(!ended)throw Error('missing fifth occurrence draw');begin(computer);count=3;centre=true;b=[1,2,2,2,0,0,1,0,1];placed=[0,3,3];p=1;slides=99;seen=new Map();move([6,4]);if(!ended||score[1]!==1)throw Error('victory must precede draw');}\`);
-  console.log('Passed: guest/account entry, private-code backup without local storage, safe friend rendering, request/challenge controls, non-disruptive notifications, automatic accepted-match entry, duplicate suppression and local 40-slide boundary. Browser/device visual QA remains separate.');
+  console.log('Passed: guest/account entry, private-code backup without local storage, safe friend rendering, request/challenge controls, non-disruptive notifications, automatic accepted-match entry, duplicate suppression and local 100-slide boundary. Browser/device visual QA remains separate.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 `;
 vm.runInThisContext('(function(require){'+base+extra+'})')(require);
