@@ -46,6 +46,15 @@ jobs:
       - name: Compile unsigned release App Bundle
         working-directory: android
         run: gradle --no-daemon :app:bundleRelease
+      - name: Inspect compiled APK security configuration
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
+          grep -q "package: name='com.dotexsolutions.akye'" apk-badging.txt
+          "$AAPT" dump permissions "$APK" | tee apk-permissions.txt
+          if grep -E 'android.permission.(READ_CONTACTS|ACCESS_FINE_LOCATION|RECORD_AUDIO|READ_SMS|SEND_SMS|CALL_PHONE|MANAGE_EXTERNAL_STORAGE)' apk-permissions.txt; then exit 1; fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
       - name: Record build provenance
         run: |
           mkdir -p android/dist
