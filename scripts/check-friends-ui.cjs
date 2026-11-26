@@ -32,7 +32,7 @@ const extra=`
   check(\`if(!online||online.room!=='a'.repeat(32))throw Error('sender did not join accepted challenge');if(!friendSeen.has('b'.repeat(32)))throw Error('challenge not acknowledged');\`);
   const joins=calls.filter(x=>x==='rooms/'+room+'/join').length;await vm.runInContext('friendPulse()',c);await settle();
   if(calls.filter(x=>x==='rooms/'+room+'/join').length!==joins)throw Error('accepted challenge reopened');
-  check(\`leaveOnline();count=3;centre=true;begin(false);b=[1,2,1,2,0,2,1,0,0];placed=[0,3,3];p=1;slides=38;seen=new Map();move([6,7]);if(ended||slides!==39)throw Error('early local draw');move([5,8]);if(!ended||slides!==40)throw Error('local draw cap');\`);
+  check(\`leaveOnline();count=3;centre=true;begin(false);b=[1,2,1,2,0,2,1,0,0];placed=[0,3,3];p=1;slides=98;seen=new Map();move([6,7]);if(ended||slides!==99)throw Error('early local draw');move([5,8]);if(!ended||slides!==100)throw Error('local draw cap');\`);
   console.log('Passed: guest/account entry, private-code backup without local storage, safe friend rendering, request/challenge controls, non-disruptive notifications, automatic accepted-match entry, duplicate suppression and local 40-slide boundary. Browser/device visual QA remains separate.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 `;
