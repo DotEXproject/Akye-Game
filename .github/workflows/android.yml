@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   android-debug:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -108,13 +108,11 @@ jobs:
       - name: Install and launch on emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          ANDROID_I_WANT_MY_TCG: 'yes'
         with:
           api-level: 35
           target: google_apis_playstore
           arch: x86_64
           profile: pixel_6
-          disable-linux-hw-accel: true
           disable-animations: true
           script: |
             adb shell pm path com.android.chrome
