@@ -99,18 +99,12 @@ jobs:
   android-emulator:
     needs: android-debug
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: akye-android-debug-apk
           path: apk
-      - name: Enable KVM acceleration
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -r /dev/kvm && test -w /dev/kvm
       - name: Install and launch on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -118,7 +112,7 @@ jobs:
           target: google_apis_playstore
           arch: x86_64
           profile: pixel_6
-          disable-linux-hw-accel: false
+          disable-linux-hw-accel: true
           disable-animations: true
           script: |
             adb shell pm path com.android.chrome

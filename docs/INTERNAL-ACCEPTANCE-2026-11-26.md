@@ -18,7 +18,7 @@ Assessment basis: source review and isolated synthetic D1 tests, mapped to relev
 | --- | --- | --- |
 | The friendly-challenge prompt and Twi localisation still mentioned threefold repetition and 40 slides after the approved fivefold / 100-slide rule was implemented elsewhere. | Medium functional acceptance issue | Updated the displayed rules and added a security-copy regression check rejecting the stale thresholds. |
 | Chromium acceptance attempted to interact with the game behind its intentionally modal welcome screen. | Test infrastructure | The browser test now enters silently and uses the visible skip control to close the welcome animation. |
-| The Android emulator job ran on an Ubuntu 26.04 hosted image where `/dev/kvm` was unavailable, so installation never began. | Test infrastructure | Android build and emulator workflows are pinned to Ubuntu 24.04, matching the supported runner used by browser acceptance. Emulator acceptance must pass on the new final commit. |
+| The hosted Android runner did not expose `/dev/kvm` even after pinning to Ubuntu 24.04, so installation never began. | Test infrastructure | Android emulator workflows now use software acceleration and a 60-minute timeout. Emulator acceptance must pass on the new final commit. |
 
 No confirmed high or critical security vulnerability was found in the controls exercised locally. This statement applies only to the source and tests listed here.
 
