@@ -18,7 +18,7 @@ Assessment basis: source review and isolated synthetic D1 tests, mapped to relev
 | --- | --- | --- |
 | The friendly-challenge prompt and Twi localisation still mentioned threefold repetition and 40 slides after the approved fivefold / 100-slide rule was implemented elsewhere. | Medium functional acceptance issue | Updated the displayed rules and added a security-copy regression check rejecting the stale thresholds. |
 | Chromium acceptance attempted to interact with the game behind its intentionally modal welcome screen. | Test infrastructure | The browser test now enters silently and uses the visible skip control to close the welcome animation. |
-| The hosted Android runner did not expose `/dev/kvm` even after pinning to Ubuntu 24.04, so installation never began. | Test infrastructure | Android emulator workflows now use software acceleration and a 60-minute timeout. Emulator acceptance must pass on the new final commit. |
+| Ubuntu runners lacked KVM, and software TCG failed to boot reliably. The later macOS workflow attempts were cancelled before any job step ran. | Test infrastructure | Android emulator workflows use macOS hardware-accelerated runners. Build/emulator acceptance still needs a completed, non-cancelled run. |
 
 No confirmed high or critical security vulnerability was found in the controls exercised locally. This statement applies only to the source and tests listed here.
 
@@ -30,8 +30,8 @@ The production UI still displays **three repeated positions / 40 slides**, and r
 
 ## Remaining gates outside this source-only assessment
 
-- Confirm Chromium desktop and touch/mobile browser CI, including screenshot evidence, on the final commit.
-- Confirm Android emulator install/launch on the corrected runner. The APK and unsigned AAB compile and pass package/permission checks in the preceding Android Actions run; the emulator part did not start because of the missing KVM device.
+- Chromium desktop and touch/mobile browser CI passed on commit `d59a886c5c7ba4693d82d49b0e52fe5d38c16f73` (Actions run 45969336600). The security/gameplay suite also passed on that commit (run 45969336770).
+- Android emulator install/launch remains unverified. The Linux software fallback failed because TCG lacked CPU features and ADB stayed offline. The subsequent macOS workflow run was cancelled before steps began (run 45969336645). A prior Android build successfully compiled the debug APK and unsigned AAB and passed package/permission checks.
 - Exercise live email verification, recovery and guardian delivery using the configured Resend sender. Local tests use a fake mail adapter and do not transmit email.
 - Exercise signed-in accounts and multiplayer against the designated Cloudflare pre-launch UAT Worker/D1 with synthetic accounts. Cloudflare credentials and a database recovery timestamp are not available in this executor; do not create synthetic accounts in production as a substitute.
 - Review Cloudflare/WAF/D1 configuration and recovery controls, test production restoration and operational monitoring, and complete device-level Android UAT. These controls cannot be verified from repository source alone.
@@ -39,5 +39,5 @@ The production UI still displays **three repeated positions / 40 slides**, and r
 
 ## Release status
 
-**Web: hold until final Chromium acceptance, the applicable source security gate and deployment checks pass; then merge/deploy and re-check the live 100-slide / fivefold copy and gameplay.**  
+**Web: source security/gameplay and Chromium desktop/mobile acceptance pass on `d59a886c5c7ba4693d82d49b0e52fe5d38c16f73`. Hold merge/deployment pending Cloudflare build diagnosis and live pre-launch checks.**  
 **Google Play: not release-ready; external registration, Play App Signing, Digital Asset Links, signed AAB, policy declarations and device UAT remain open.**
