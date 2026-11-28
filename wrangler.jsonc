@@ -19,6 +19,7 @@
     "d1_databases": [
       {
         "binding": "DB",
+        "database_name": "dotex-akye-preview",
         "database_id": "592485dc-7d1b-4171-9601-0991286ec299"
       }
     ]
