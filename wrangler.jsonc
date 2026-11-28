@@ -14,5 +14,14 @@
       "database_id": "072d92c7-08a8-4807-b6c8-cb9c3044c3e1",
       "migrations_dir": "./drizzle"
     }
-  ]
+  ],
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "dotex-akye-preview",
+        "database_id": "592485dc-7d1b-4171-9601-0991286ec299"
+      }
+    ]
+  }
 }

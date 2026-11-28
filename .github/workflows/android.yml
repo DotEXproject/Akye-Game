@@ -1,0 +1,139 @@
+name: Android debug build
+
+on:
+  push:
+    branches:
+      - feature/android-play-store
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Validate Android release configuration
+        run: node android/scripts/check-release-config.mjs
+      - name: Validate Android Digital Asset Links generator
+        run: node android/scripts/check-assetlinks.mjs
+      - name: Locate Android SDK
+        run: echo "ANDROID_HOME=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+      - name: Install Android SDK platform
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0" || test "${PIPESTATUS[1]}" -eq 0
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Compile debug APK
+        working-directory: android
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Compile unsigned release App Bundle
+        working-directory: android
+        run: gradle --no-daemon :app:bundleRelease
+      - name: Inspect compiled APK security configuration
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
+          grep -q "package: name='com.dotexsolutions.akye'" apk-badging.txt
+          "$AAPT" dump permissions "$APK" | tee apk-permissions.txt
+          if grep -E 'android.permission.(READ_CONTACTS|ACCESS_FINE_LOCATION|RECORD_AUDIO|READ_SMS|SEND_SMS|CALL_PHONE|MANAGE_EXTERNAL_STORAGE)' apk-permissions.txt; then exit 1; fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+      - name: Record build provenance
+        run: |
+          mkdir -p android/dist
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "workflow=${GITHUB_WORKFLOW}"
+            echo "android_application_id=com.dotexsolutions.akye"
+            echo "build_type=debug-apk-and-unsigned-release-aab"
+          } > android/dist/BUILD_INFO.txt
+      - name: Record APK and AAB SHA-256 checksums
+        run: |
+          mkdir -p android/dist
+          sha256sum android/app/build/outputs/apk/debug/*.apk android/app/build/outputs/bundle/release/*.aab > android/dist/SHA256SUMS.txt
+          cat android/dist/SHA256SUMS.txt
+      - name: Upload build checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-android-sha256
+          path: |
+            android/dist/SHA256SUMS.txt
+            android/dist/BUILD_INFO.txt
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload unsigned release AAB for validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-android-unsigned-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload unsigned-for-release debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-android-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+  android-emulator:
+    needs: android-debug
+    # Linux hosted runners lack KVM here, and software TCG did not boot reliably.
+    # macOS supplies hardware acceleration for this device smoke test.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: akye-android-debug-apk
+          path: apk
+      - name: Install and launch on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis_playstore
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb shell pm path com.android.chrome
+            adb install -r apk/app-debug.apk
+            adb shell pm path com.dotexsolutions.akye
+            adb logcat -c
+            adb shell am start -W -n com.dotexsolutions.akye/.MainActivity | tee launch.txt
+            grep -q 'Status: ok' launch.txt
+            sleep 10
+            adb logcat -d -b crash > crash.txt
+            if grep -q 'Process: com.dotexsolutions.akye' crash.txt; then cat crash.txt; exit 1; fi
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | tee resumed.txt
+            grep -E 'com.android.chrome|com.dotexsolutions.akye' resumed.txt
+      - name: Upload launch diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: akye-emulator-diagnostics
+          path: |
+            launch.txt
+            crash.txt
+            resumed.txt
+          if-no-files-found: warn

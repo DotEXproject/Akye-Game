@@ -2,7 +2,7 @@ import {Miniflare} from 'miniflare';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {handle} from '../server/api.mjs';
-import {regeneratedLives} from '../server/rules.mjs';
+import {regeneratedLives, initial, play} from '../server/rules.mjs';
 const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("ok")}}',compatibilityDate:'2026-05-01',d1Databases:['DB']});
 try {const db=await mf.getD1Database('DB');const sql=await readFile(new URL('../drizzle/0000_perpetual_blink.sql',import.meta.url),'utf8');for(const stmt of sql.split('--> statement-breakpoint'))await db.prepare(stmt).run();
 const clients=[{}, {}, {}];async function call(w,path,body){const c=clients[w];const req=new Request('https://test.example/api/achi/'+path,{method:body===undefined?'GET':'POST',headers:{origin:'https://test.example',...(c.cookie?{cookie:c.cookie}:{}),...(body===undefined?{}:{'content-type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body)});const r=await handle(req,db);if(r.headers.has('set-cookie'))c.cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,data:await r.json()};}
@@ -23,3 +23,17 @@ s=(await call(1,'rooms/'+room)).data;assert.equal(s.state.moves,1);let conceded=
 assert.deepEqual(regeneratedLives(1,0,600001),{balance:3,anchor:600000});assert.equal(regeneratedLives(4,0,600001).balance,5);assert.equal(regeneratedLives(3,600000,1).balance,3);
 console.log('Passed: separate sessions, invitations, room capacity, turn ownership, server legality, synchronized win, reconnect, private room access, atomic concurrent moves, single result credit, leaderboard, resignation and future lives clock policy.');
 }finally{await mf.dispose();}
+
+// Draw boundary regression: non-winning legal slide, repetition and victory precedence.
+{
+ const s=initial(3,false,['cowrie','gye']);
+ Object.assign(s,{board:[1,2,1,2,0,2,0,1,0],placed:[0,3,3],status:'playing',turn:1,slides:98});
+ const m=[7,4];
+ const a=play(s,m);assert.equal(a.slides,99);assert.equal(a.status,'playing');
+ const b=play({...s,slides:99},m);assert.equal(b.winner,0);assert.equal(b.slides,100);
+ const key=JSON.stringify([a.board,a.turn,a.placed]);
+ assert.equal(play({...s,seen:{[key]:3}},m).status,'playing');
+ assert.equal(play({...s,seen:{[key]:4}},m).winner,0);
+ const v={...s,board:[1,1,0,2,2,1,0,2,0],slides:99};
+ assert.equal(play(v,[5,2]).winner,1);
+}
