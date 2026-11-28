@@ -100,7 +100,7 @@ jobs:
     needs: android-debug
     # Linux hosted runners lack KVM here, and software TCG did not boot reliably.
     # macOS supplies hardware acceleration for this device smoke test.
-    runs-on: macos-14
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/download-artifact@v4
